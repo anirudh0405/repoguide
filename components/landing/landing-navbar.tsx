@@ -6,6 +6,7 @@ import Link from "next/link";
 
 import { Logo } from "@/components/brand";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { AuthNav } from "@/components/auth/auth-cta";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -59,14 +60,7 @@ export function LandingNavbar() {
 
         <div className="flex items-center gap-2">
           <ThemeToggle />
-          <Link href="/dashboard" className="hidden sm:inline-flex">
-            <Button variant="outline" size="sm">
-              Sign in
-            </Button>
-          </Link>
-          <Link href="/repositories" className="hidden sm:inline-flex">
-            <Button size="sm">Connect GitHub</Button>
-          </Link>
+          <AuthNav className="hidden sm:flex" />
 
           <MobileNav />
         </div>
@@ -100,12 +94,7 @@ function MobileNav() {
             </Link>
           ))}
           <div className="mt-4 flex flex-col gap-2 border-t pt-4">
-            <Button asChild variant="outline">
-              <Link href="/dashboard">Sign in</Link>
-            </Button>
-            <Button asChild>
-              <Link href="/repositories">Connect GitHub</Link>
-            </Button>
+            <AuthNav className="flex-col" />
           </div>
         </nav>
       </SheetContent>

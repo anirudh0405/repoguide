@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, Clock, Loader2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, Loader2, Hourglass } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import type { AnalysisStatus } from "@/lib/types";
@@ -7,6 +7,7 @@ const statusConfig: Record<
   AnalysisStatus,
   { label: string; variant: "success" | "info" | "warning" | "destructive" | "secondary"; icon?: typeof Clock }
 > = {
+  not_analyzed: { label: "Not analyzed", variant: "secondary", icon: Hourglass },
   analyzed: { label: "Analyzed", variant: "success", icon: CheckCircle2 },
   analyzing: { label: "Analyzing", variant: "info", icon: Loader2 },
   queued: { label: "Queued", variant: "warning", icon: Clock },

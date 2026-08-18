@@ -4,14 +4,22 @@
 
 ## What This Is
 
-RepoGuide is a developer SaaS that helps engineers understand unfamiliar codebases. This is **Phase 1**: the full application shell and UI built with realistic mock data. GitHub integration, AI analysis, embeddings, and codebase chat are intentionally **not implemented yet** — every button that needs them says "Coming in the next phase."
+RepoGuide is a developer SaaS that helps engineers understand unfamiliar codebases. **Phase 2 is live**: users sign in with GitHub, connect the RepoGuide GitHub App to their account, browse their real repositories, and create projects ready for AI analysis. The actual AI analysis, embeddings, and codebase chat arrive in Phase 3.
+
+## How Sign-In Works
+
+1. A visitor clicks **Connect GitHub** (or **Sign in**).
+2. GitHub asks them to authorize RepoGuide.
+3. They pick which repositories the RepoGuide app can access (read-only).
+4. They land in the app — their real GitHub repositories are listed and searchable.
+5. Clicking **Analyze** on a repository creates a project with status "Not analyzed yet."
 
 ## Pages
 
-- **Home** (`/`) — Landing page with an animated-style hero, how-it-works, features, an example architecture diagram, codebase Q&A preview, pricing, FAQ, and call-to-action sections.
-- **Dashboard** (`/dashboard`) — Overview with repository stats (projects, analyzed, currently analyzing, files indexed), recent project cards, analysis status, activity feed, and quick actions.
-- **Repositories** (`/repositories`) — Browse and search mock GitHub repositories. Cards show language, visibility, stars, forks, and last-updated. "Analyze" explains that live integration arrives in Phase 2.
-- **Project detail** (`/projects/[id]`) — Full analysis workspace with 7 tabs: Overview, Architecture, Files, Documentation, Flows, AI Chat, and Analysis. Uses mock data for three analyzed projects and one in-progress analysis.
+- **Home** (`/`) — Landing page with hero, how-it-works, features, an example architecture diagram, codebase Q&A preview, pricing, FAQ, and call-to-action. Sign-in buttons are real.
+- **Dashboard** (`/dashboard`) — Real projects you've created, with status badges.
+- **Repositories** (`/repositories`) — Your real GitHub repositories (from the app installation). Search, filter by language, or install the app for more.
+- **Project detail** (`/projects/[id]`) — Shows the connected repository and a "Ready for analysis" state until Phase 3 ships.
 
 ## Design
 
@@ -27,42 +35,44 @@ Reusable pieces in `components/`:
 | Component | Purpose |
 |---|---|
 | `ui/` | shadcn-style base: button, badge, card, input, tabs, dialog, sheet, dropdown, avatar, progress, skeleton, tooltip, separator |
-| `app-shell/app-sidebar.tsx` | Left sidebar (plus bottom nav on phones) |
-| `app-shell/app-topbar.tsx` | Top bar with user menu, theme, notifications |
-| `dashboard/project-card.tsx` | Project summary card with status + progress |
+| `app-shell/` | Left sidebar, top bar with real user menu + sign out |
+| `dashboard/project-card.tsx` | Project summary card with status badge |
 | `dashboard/stat-card.tsx` | Number/icon stat tile |
-| `repositories/repository-card.tsx` | GitHub-style repository card |
-| `repositories/repository-list.tsx` | Search + filter list of repositories |
-| `project/architecture-card.tsx` | Visual architecture tree |
-| `project/file-tree.tsx` | Expandable file explorer |
-| `project/chat-interface.tsx` | Simulated codebase Q&A chat |
-| `project/project-detail-view.tsx` | The 7-tab project workspace |
+| `repositories/` | Real repository cards + searchable list |
+| `project/project-ready-view.tsx` | "Repository connected, ready for analysis" state |
+| `auth/auth-cta.tsx` | Auth-aware sign-in buttons (landing page + navbar) |
+| `auth/use-auth.ts` | Client-side hook that reads the signed-in user |
 | `ui-states/` | Shared EmptyState, LoadingState, StatusBadge |
 | `landing/` | The landing page section components |
 | `theme-provider.tsx`, `theme-toggle.tsx` | Dark/light mode |
 
-## Mock Data
+## Behind the Scenes (Server Code)
 
-Realistic data lives in `lib/mock-data.ts` (types in `lib/types.ts`):
+- `lib/github.ts` — Talks to GitHub: app JWT, OAuth exchange, installations, repositories.
+- `lib/auth.ts` — Signed session cookies (safe, can't be forged).
+- `lib/db.ts` — Database connection (PostgreSQL via Supabase).
+- `lib/workspace.ts` — Turns the database into what the pages show.
+- `app/api/auth/*` — Sign in, callback, sign out, "who am I" endpoints.
+- `app/api/projects` — Creates a project from a real GitHub repository.
+- `prisma/schema.prisma` — The data model: users, GitHub accounts, installations, repositories, projects.
 
-- 8 mock repositories across TypeScript, Java, Go, Python, and HCL
-- 4 projects — `ecommerce-platform` (Next.js/Prisma/Stripe), `payment-service` (Java/Spring Boot), `mobile-api` (NestJS), and `data-analytics-ingestor` (Go, "currently analyzing")
-- Per-project architecture maps, file trees, generated docs, flows, chat history, and analysis issues
+## Data
+
+Stored in a PostgreSQL database (Supabase). A project only records the repository the user picked — RepoGuide does **not** store repository code. All GitHub access is read-only.
 
 ## How to Customize
 
 - **Colors**: edit the `:root` and `.dark` color variables at the top of `app/globals.css`. The brand accent is `--brand`.
 - **Fonts**: swap `Space_Grotesk` / `DM_Sans` in `app/layout.tsx`.
-- **Add a mock project**: add an entry to `mockProjects`, a `ProjectDetail` in `mockProjectDetails`, and a repository if needed (all in `lib/mock-data.ts`).
 - **Navigation**: sidebar links are in `components/app-shell/app-sidebar.tsx`.
+- **GitHub credentials**: in the `.env.local` file (kept out of git). See `.env.example` for the list.
 
 ## Recent Changes
 
-- 2026-08-18: Built Phase 1 application shell — landing page, dashboard, repository browser, and project workspace with 7 tabs, all on mock data. Added dark/light mode, responsive layout, loading/empty/error states, and reusable component library.
+- 2026-08-18: **Phase 2 live.** Real GitHub sign-in, real repository listing, project creation with "Not analyzed yet" status, PostgreSQL data layer, session-based auth. Removed the mock data layer and the placeholder project workspace. Verified: GitHub App JWT works, app permissions are read-only, database tables created and reachable from the app, build/lint/typecheck pass.
 
-## Coming in Phase 2
+## Coming in Phase 3
 
-- GitHub OAuth + real repository listing
 - Repository cloning + AI-powered analysis (architecture, docs, flows, issues)
 - Grounded codebase Q&A chat
 - Team plans and billing

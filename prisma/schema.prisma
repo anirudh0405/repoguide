@@ -1,0 +1,85 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id             String             @id @default(cuid())
+  githubId       Int                @unique
+  email          String?
+  name           String?
+  avatarUrl      String?
+  account        GitHubAccount?
+  installations  GitHubInstallation[]
+  projects       Project[]
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+}
+
+model GitHubAccount {
+  id                   String             @id @default(cuid())
+  userId               String             @unique
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  githubId             Int                @unique
+  login                String
+  name                 String?
+  email                String?
+  avatarUrl            String?
+  accessToken          String?
+  refreshToken         String?
+  accessTokenExpiresAt DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+}
+
+model GitHubInstallation {
+  id                  String         @id @default(cuid())
+  githubId            Int            @unique
+  accountId           Int
+  accountLogin        String
+  accountType         String         @default("User")
+  repositorySelection String         @default("all")
+  userId              String
+  user                User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repositories        Repository[]
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+}
+
+model Repository {
+  id             String               @id @default(cuid())
+  githubId       Int                  @unique
+  name           String
+  owner          String
+  fullName       String               @unique
+  description    String?
+  url            String
+  language       String?
+  visibility     String               @default("public")
+  stars          Int                  @default(0)
+  forks          Int                  @default(0)
+  defaultBranch  String               @default("main")
+  updatedAt      DateTime             @default(now())
+  installationId String
+  installation   GitHubInstallation   @relation(fields: [installationId], references: [id], onDelete: Cascade)
+  project        Project?
+  createdAt      DateTime             @default(now())
+}
+
+model Project {
+  id           String     @id @default(cuid())
+  name         String
+  description  String?
+  language     String?
+  status       String     @default("NOT_ANALYZED")
+  repositoryId String     @unique
+  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}

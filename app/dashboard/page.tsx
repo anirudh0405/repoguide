@@ -1,145 +1,161 @@
 import Link from "next/link";
-import {
-  Activity,
-  ArrowRight,
-  BotMessageSquare,
-  CheckCircle2,
-  FileCode2,
-  FolderGit2,
-  GitBranch,
-  Loader2,
-  Plus,
-  ScrollText,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2, FolderGit2, GitBranch, Hourglass, Plus, Sparkles } from "lucide-react";
 
 import { AppShell } from "@/components/app-shell/app-shell";
 import { ProjectCard } from "@/components/dashboard/project-card";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { EmptyState } from "@/components/ui-states/empty-state";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
-import { mockProjects } from "@/lib/mock-data";
+import { requireUser } from "@/lib/auth";
+import { getPrisma } from "@/lib/db";
+import { getWorkspaceState, getUserProjects, type WorkspaceState } from "@/lib/workspace";
 
-const activityFeed = [
-  { icon: CheckCircle2, color: "text-success", text: "ecommerce-platform analysis completed", time: "2 hours ago" },
-  { icon: CheckCircle2, color: "text-success", text: "mobile-api analysis completed", time: "yesterday" },
-  { icon: CheckCircle2, color: "text-success", text: "payment-service analysis completed", time: "yesterday" },
-  { icon: Loader2, color: "text-info", text: "data-analytics-ingestor analysis started", time: "just now" },
-];
+export const dynamic = "force-dynamic";
 
-export default function DashboardPage() {
-  const analyzing = mockProjects.filter((p) => p.status === "analyzing");
-  const analyzedCount = mockProjects.filter((p) => p.status === "analyzed").length;
+export default async function DashboardPage() {
+  const user = await requireUser();
+
+  const prisma = getPrisma();
+  let workspace: WorkspaceState;
+  if (!prisma) {
+    workspace = {
+      configured: false,
+      authenticated: true,
+      installations: 0,
+      installUrl: null,
+      repositories: [],
+      error: null,
+    };
+  } else {
+    workspace = await getWorkspaceState(user.id);
+  }
+
+  const projects = await getUserProjects(user.id);
+  const connectedCount = projects.length;
+  const notAnalyzedCount = projects.filter((p) => p.status === "not_analyzed").length;
+  const firstName = user.name?.split(" ")[0] ?? user.login ?? "there";
 
   return (
-    <AppShell title="Overview">
+    <AppShell title="Overview" user={user}>
       <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight">
-              Welcome back, Alex
+              Welcome back, {firstName}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Here&apos;s what&apos;s happening across your repositories.
+              Connect repositories from your GitHub App installation. Analysis is next on the roadmap.
             </p>
           </div>
           <Button asChild className="gap-2">
             <Link href="/repositories">
               <GitBranch className="h-4 w-4" />
-              Analyze a new repository
+              Connect a repository
             </Link>
           </Button>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Projects" value={mockProjects.length} icon={FolderGit2} hint="acme org" />
+          <StatCard label="Projects" value={connectedCount} icon={FolderGit2} hint="connected" />
           <StatCard
-            label="Analyzed"
-            value={analyzedCount}
+            label="Not analyzed"
+            value={notAnalyzedCount}
+            icon={Hourglass}
+            hint="ready for Phase 3"
+          />
+          <StatCard
+            label="Repositories"
+            value={workspace.repositories.length}
+            icon={GitBranch}
+            hint="in your installation"
+          />
+          <StatCard
+            label="GitHub installs"
+            value={workspace.installations}
             icon={CheckCircle2}
-            hint="analyses complete"
-          />
-          <StatCard
-            label="Currently analyzing"
-            value={analyzing.length}
-            icon={Loader2}
-            hint="in progress"
-          />
-          <StatCard
-            label="Files indexed"
-            value={mockProjects.reduce((acc, p) => acc + p.stats.files, 0)}
-            icon={FileCode2}
-            hint="across all projects"
+            hint={workspace.installations === 1 ? "installation" : "installations"}
           />
         </div>
 
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="font-semibold">Recent projects</h3>
+              <h3 className="font-semibold">Projects</h3>
               <Link
-                href="/projects/ecommerce-platform"
+                href="/repositories"
                 className="inline-flex items-center gap-1 text-sm text-brand hover:underline"
               >
-                View all
+                Connect more
                 <ArrowRight className="h-3.5 w-3.5" />
               </Link>
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {mockProjects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
-              ))}
-            </div>
+            {projects.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {projects.map((project) => (
+                  <ProjectCard key={project.id} project={project} />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                icon={FolderGit2}
+                title="No projects yet"
+                description="Connect a repository from your GitHub App installation to create your first project."
+                actionLabel="Connect a repository"
+                onAction={() => {
+                  window.location.href = "/repositories";
+                }}
+              />
+            )}
           </div>
 
           <div className="space-y-6">
-            {analyzing.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-sm">
-                    <Activity className="h-4 w-4 text-info" />
-                    Analysis status
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {analyzing.map((project) => (
-                    <div key={project.id}>
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-sm font-medium">{project.name}</span>
-                        <Badge variant="info">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          {project.progress}%
-                        </Badge>
-                      </div>
-                      <Progress value={project.progress} className="mt-2" />
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Mapping architecture · indexing files · generating docs
-                      </p>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm">GitHub connection</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="relative flex h-2 w-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-60" />
+                    <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+                  </span>
+                  <p className="text-sm">
+                    {workspace.configured ? "Connected" : "Configuration required"}
+                  </p>
+                </div>
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  {workspace.configured
+                    ? `The RepoGuide GitHub App is installed on ${
+                        workspace.installations
+                      } account${workspace.installations === 1 ? "" : "s"} and can access ${
+                        workspace.repositories.length
+                      } repository${workspace.repositories.length === 1 ? "" : "s"}.`
+                    : "Set DATABASE_URL and the GitHub App credentials to connect."}
+                </p>
+                {workspace.installUrl && (
+                  <Button asChild variant="outline" size="sm" className="w-full">
+                    <Link href={workspace.installUrl} target="_blank" rel="noreferrer">
+                      Manage installation
+                    </Link>
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle className="text-sm">Recent activity</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <Sparkles className="h-4 w-4 text-brand" />
+                  Next up
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {activityFeed.map((entry, i) => (
-                  <div key={i}>
-                    <div className="flex items-start gap-2.5">
-                      <entry.icon className={`mt-0.5 h-4 w-4 shrink-0 ${entry.color}`} />
-                      <div className="min-w-0">
-                        <p className="text-sm">{entry.text}</p>
-                        <p className="text-xs text-muted-foreground">{entry.time}</p>
-                      </div>
-                    </div>
-                    {i < activityFeed.length - 1 && <Separator className="mt-3" />}
-                  </div>
-                ))}
+              <CardContent>
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  Connected projects are stored as{" "}
+                  <span className="font-medium text-foreground">not analyzed</span>. Code analysis —
+                  architecture maps, docs, and chat — arrives in Phase 3.
+                </p>
               </CardContent>
             </Card>
 
@@ -151,22 +167,17 @@ export default function DashboardPage() {
                 <Button asChild variant="outline" className="w-full justify-start gap-2">
                   <Link href="/repositories">
                     <Plus className="h-4 w-4" />
-                    New analysis
+                    Connect a repository
                   </Link>
                 </Button>
-                <Button asChild variant="outline" className="w-full justify-start gap-2">
-                  <Link href="/projects/ecommerce-platform">
-                    <ScrollText className="h-4 w-4" />
-                    Open documentation
-                  </Link>
-                </Button>
-                <Button variant="outline" className="w-full justify-start gap-2" disabled>
-                  <BotMessageSquare className="h-4 w-4" />
-                  Ask about a codebase
-                  <Badge variant="brand" className="ml-auto">
-                    Phase 2
-                  </Badge>
-                </Button>
+                {workspace.installUrl && (
+                  <Button asChild variant="outline" className="w-full justify-start gap-2">
+                    <Link href={workspace.installUrl} target="_blank" rel="noreferrer">
+                      <GitBranch className="h-4 w-4" />
+                      Install GitHub App
+                    </Link>
+                  </Button>
+                )}
               </CardContent>
             </Card>
           </div>

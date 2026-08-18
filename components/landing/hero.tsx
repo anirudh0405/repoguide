@@ -1,8 +1,7 @@
-import { ArrowRight, FileCode2, GitBranch, MessageSquare } from "lucide-react";
-import Link from "next/link";
+import { FileCode2, GitBranch, MessageSquare } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { AuthCta } from "@/components/auth/auth-cta";
 
 const statusLines = [
   { icon: GitBranch, label: "Cloning repository", detail: "acme/ecommerce-platform · main" },
@@ -36,20 +35,7 @@ export function LandingHero() {
             files, documentation, and codebase Q&amp;A.
           </p>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-            <Button asChild size="lg" className="gap-2">
-              <Link href="/repositories">
-                <GitBranch className="h-4 w-4" />
-                Connect GitHub
-              </Link>
-            </Button>
-            <Button asChild size="lg" variant="outline" className="gap-2">
-              <Link href="/dashboard">
-                View Demo
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
+          <AuthCta className="mt-8" />
 
           <p className="mt-6 text-sm text-muted-foreground">
             Free for up to 3 repositories · No credit card required

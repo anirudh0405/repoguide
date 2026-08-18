@@ -1,7 +1,4 @@
-import { ArrowRight, GitBranch } from "lucide-react";
-import Link from "next/link";
-
-import { Button } from "@/components/ui/button";
+import { AuthCta } from "@/components/auth/auth-cta";
 
 export function LandingCta() {
   return (
@@ -20,20 +17,7 @@ export function LandingCta() {
               Connect a repository and get the architecture map, docs, and answers your whole team
               can rely on — in minutes.
             </p>
-            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-              <Button asChild size="lg" className="gap-2">
-                <Link href="/repositories">
-                  <GitBranch className="h-4 w-4" />
-                  Connect GitHub
-                </Link>
-              </Button>
-              <Button asChild size="lg" variant="outline" className="gap-2">
-                <Link href="/dashboard">
-                  View Demo
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
-            </div>
+            <AuthCta className="mt-8 justify-center" />
             <p className="mt-6 text-sm text-muted-foreground">
               Free for up to 3 repositories · No credit card required
             </p>

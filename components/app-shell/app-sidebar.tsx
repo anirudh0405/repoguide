@@ -6,7 +6,6 @@ import {
   BarChart3,
   BrainCircuit,
   FolderGit2,
-  GitBranch,
   Home,
   Settings,
   Workflow,
@@ -21,6 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import type { CurrentUser } from "@/lib/auth";
 
 const navItems = [
   { label: "Home", href: "/", icon: Home, group: "Workspace" },
@@ -31,8 +31,7 @@ const navItems = [
 ];
 
 const chatItems = [
-  { label: "View demo", href: "/projects/ecommerce-platform", icon: Workflow, group: "Quick links" },
-  { label: "GitHub", href: "https://github.com", icon: GitBranch, group: "Quick links" },
+  { label: "Repositories", href: "/repositories", icon: FolderGit2, group: "Quick links" },
 ];
 
 function SidebarItem({
@@ -42,7 +41,7 @@ function SidebarItem({
   item: (typeof navItems)[number];
   active: boolean;
 }) {
-  const content = (
+  return (
     <Link
       href={item.href}
       className={cn(
@@ -57,11 +56,9 @@ function SidebarItem({
       {item.comingSoon && <ComingSoon label="Soon" />}
     </Link>
   );
-
-  return content;
 }
 
-export function AppSidebar() {
+export function AppSidebar({ user }: { user: CurrentUser }) {
   const pathname = usePathname();
 
   return (
@@ -73,7 +70,9 @@ export function AppSidebar() {
           </Link>
           <div className="min-w-0">
             <p className="truncate text-xs font-semibold">RepoGuide</p>
-            <p className="text-[11px] text-muted-foreground">acme org</p>
+            <p className="truncate text-[11px] text-muted-foreground">
+              {user.login ? `@${user.login}` : "workspace"}
+            </p>
           </div>
         </div>
 
@@ -96,20 +95,23 @@ export function AppSidebar() {
               <Link
                 key={item.label}
                 href={item.href}
-                target={item.href.startsWith("http") ? "_blank" : undefined}
-                rel={item.href.startsWith("http") ? "noreferrer" : undefined}
                 className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
               >
                 <item.icon className="h-4 w-4 shrink-0" />
                 {item.label}
               </Link>
             ))}
+            <div className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground">
+              <Workflow className="h-4 w-4 shrink-0" />
+              Analysis
+              <ComingSoon className="ml-auto" label="Phase 3" />
+            </div>
           </div>
         </nav>
 
         <div className="border-t p-3">
           <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
-            GitHub authorization, cloning, and AI analysis arrive in the next phase.
+            GitHub is connected. Code analysis arrives in the next phase.
           </p>
         </div>
       </aside>
