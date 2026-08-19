@@ -1,4 +1,47 @@
-export type AnalysisStatus = "not_analyzed" | "analyzed" | "analyzing" | "queued" | "failed";
+export type AnalysisPhase = "QUEUED" | "DOWNLOADING" | "PARSING" | "ANALYZING" | "COMPLETED" | "FAILED";
+
+export type Confidence = "HIGH" | "MEDIUM" | "LOW";
+
+export type AnalysisStatus = AnalysisPhase;
+
+export interface LanguageStats {
+  files: number;
+  lines: number;
+}
+
+export interface ImportantFileInfo {
+  path: string;
+  kind: string;
+}
+
+export interface EntryPointInfo {
+  path: string;
+  confidence: Confidence;
+  note?: string;
+}
+
+export interface AnalysisSummary {
+  fileCount: number;
+  lineCount: number;
+  languages: Record<string, LanguageStats>;
+  frameworks: string[];
+  packageManagers: string[];
+  importantFiles: ImportantFileInfo[];
+  entryPoints: EntryPointInfo[];
+  directoryTree: string;
+  defaultBranch: string;
+}
+
+export interface ProjectAnalysis {
+  id: string;
+  status: AnalysisPhase;
+  step: string | null;
+  error: string | null;
+  summary: AnalysisSummary | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  createdAt: string;
+}
 
 export interface Repository {
   id: string;

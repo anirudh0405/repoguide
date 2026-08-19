@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getSessionUserId } from "@/lib/auth";
+import { startAnalysis } from "@/lib/analyzer";
 import { getPrisma } from "@/lib/db";
 import {
   GitHubError,
@@ -104,20 +105,34 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    const project = await prisma.project.upsert({
+    const existingProject = await prisma.project.findUnique({
       where: { repositoryId: repository.id },
-      create: {
-        name: repo.name,
-        description: repo.description,
-        language: repo.language,
-        status: "NOT_ANALYZED",
-        repositoryId: repository.id,
-        userId,
-      },
-      update: {},
     });
 
-    return NextResponse.json({ projectId: project.id });
+    let project = existingProject;
+    if (!project) {
+      project = await prisma.project.create({
+        data: {
+          name: repo.name,
+          description: repo.description,
+          language: repo.language,
+          status: "QUEUED",
+          repositoryId: repository.id,
+          userId,
+        },
+      });
+    }
+
+    // New projects start analysis immediately. Existing projects only restart
+    // when the previous run failed (retry). Completed or in-flight projects
+    // are left untouched so we never double-run.
+    const shouldAnalyze = !existingProject || project.status === "FAILED";
+    if (shouldAnalyze) {
+      await prisma.project.update({ where: { id: project.id }, data: { status: "QUEUED" } });
+      startAnalysis(project.id);
+    }
+
+    return NextResponse.json({ projectId: project.id, status: shouldAnalyze ? "QUEUED" : project.status });
   } catch (error) {
     if (error instanceof GitHubError) {
       console.error("Project creation failed:", error.message);

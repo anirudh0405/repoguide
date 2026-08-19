@@ -1,13 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { FolderGit2 } from "lucide-react";
-import type { Metadata } from "next";
 
 import { AppShell } from "@/components/app-shell/app-shell";
-import { ProjectReadyView } from "@/components/project/project-ready-view";
-import { EmptyState } from "@/components/ui-states/empty-state";
+import { AnalysisView } from "@/components/project/analysis-view";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
 import { getPrisma } from "@/lib/db";
+import type { AnalysisPhase, AnalysisSummary } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "Project",
@@ -26,6 +26,9 @@ export default async function ProjectPage({ params }: PageProps) {
   const prisma = getPrisma();
 
   let project = null;
+  let analysis = null;
+  let dependencies: { id: string; name: string; version: string | null; type: string; scope: string | null }[] = [];
+  let sourceFileCount = 0;
   if (prisma) {
     try {
       // Projects are always scoped to the signed-in user. An ID belonging to
@@ -34,6 +37,16 @@ export default async function ProjectPage({ params }: PageProps) {
         where: { id, userId: user.id },
         include: { repository: true },
       });
+      if (project) {
+        [analysis, dependencies, sourceFileCount] = await Promise.all([
+          prisma.analysis.findFirst({ where: { projectId: id }, orderBy: { createdAt: "desc" } }),
+          prisma.dependency.findMany({
+            where: { projectId: id },
+            orderBy: [{ type: "asc" }, { name: "asc" }],
+          }),
+          prisma.sourceFile.count({ where: { projectId: id } }),
+        ]);
+      }
     } catch {
       project = null;
     }
@@ -68,43 +81,44 @@ export default async function ProjectPage({ params }: PageProps) {
     );
   }
 
-  if (project.status === "NOT_ANALYZED") {
-    return (
-      <AppShell title={project.repository.name} user={user}>
-        <ProjectReadyView
-          name={project.name}
-          owner={project.repository.owner}
-          description={project.description}
-          language={project.repository.language}
-          visibility={project.repository.visibility}
-          stars={project.repository.stars}
-          updatedAt={project.repository.updatedAt.toISOString()}
-          url={project.repository.url}
-          defaultBranch={project.repository.defaultBranch}
-        />
-      </AppShell>
-    );
-  }
+  const initial = {
+    id: project.id,
+    status: project.status as AnalysisPhase,
+    createdAt: project.createdAt.toISOString(),
+    repository: {
+      owner: project.repository.owner,
+      name: project.repository.name,
+      fullName: project.repository.fullName,
+      description: project.repository.description,
+      language: project.repository.language,
+      visibility: project.repository.visibility,
+      stars: project.repository.stars,
+      defaultBranch: project.repository.defaultBranch,
+      url: project.repository.url,
+    },
+    analysis: analysis
+      ? {
+          id: analysis.id,
+          status: analysis.status as AnalysisPhase,
+          step: analysis.step,
+          error: analysis.error,
+          summary: analysis.summary as AnalysisSummary | null,
+          completedAt: analysis.completedAt?.toISOString() ?? null,
+          createdAt: analysis.createdAt.toISOString(),
+        }
+      : null,
+    dependencies: dependencies.map((dep) => ({
+      name: dep.name,
+      version: dep.version,
+      type: dep.type,
+      scope: dep.scope,
+    })),
+    sourceFileCount,
+  };
 
   return (
     <AppShell title={project.repository.name} user={user}>
-      <div className="space-y-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            Back to dashboard
-          </Link>
-        </div>
-        <EmptyState
-          icon={FolderGit2}
-          title={`${project.repository.name} is not analyzed yet`}
-          description="Code analysis — architecture maps, documentation, and Q&A — arrives in Phase 3."
-          actionLabel="Back to repositories"
-          actionHref="/repositories"
-        />
-      </div>
+      <AnalysisView projectId={project.id} initial={initial} />
     </AppShell>
   );
 }

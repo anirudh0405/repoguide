@@ -49,7 +49,7 @@ export default async function RepositoriesPage({ searchParams }: PageProps) {
             Your repositories
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Pick a repository to connect. Analysis is next on the roadmap.
+            Pick a repository to analyze. RepoGuide downloads and maps its codebase.
           </p>
         </div>
         <RepositoryList

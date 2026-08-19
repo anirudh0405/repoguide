@@ -62,7 +62,7 @@ export function RepositoryCard({
       });
       const data = (await response.json()) as { projectId?: string; error?: string };
       if (!response.ok) {
-        throw new Error(data.error ?? "Failed to connect repository");
+        throw new Error(data.error ?? "Failed to start analysis");
       }
       router.push(`/projects/${data.projectId}`);
     } catch (err) {
@@ -141,7 +141,7 @@ export function RepositoryCard({
               ) : (
                 <Play className="h-3.5 w-3.5" />
               )}
-              {creating ? "Connecting…" : "Connect"}
+              {creating ? "Queuing…" : "Analyze"}
             </Button>
             {hasProject && projectId && (
               <Button asChild size="sm" variant="outline" className="flex-1">

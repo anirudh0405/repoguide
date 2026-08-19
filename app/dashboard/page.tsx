@@ -8,6 +8,7 @@ import { EmptyState } from "@/components/ui-states/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { requireUser } from "@/lib/auth";
+import { isActiveStatus } from "@/lib/analyzer";
 import { getPrisma } from "@/lib/db";
 import { getWorkspaceState, getUserProjects, type WorkspaceState } from "@/lib/workspace";
 
@@ -33,7 +34,8 @@ export default async function DashboardPage() {
 
   const projects = await getUserProjects(user.id);
   const connectedCount = projects.length;
-  const notAnalyzedCount = projects.filter((p) => p.status === "not_analyzed").length;
+  const analyzedCount = projects.filter((p) => p.status === "COMPLETED").length;
+  const inProgressCount = projects.filter((p) => isActiveStatus(p.status)).length;
   const firstName = user.name?.split(" ")[0] ?? user.login ?? "there";
 
   return (
@@ -45,13 +47,13 @@ export default async function DashboardPage() {
               Welcome back, {firstName}
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Connect repositories from your GitHub App installation. Analysis is next on the roadmap.
+              Connect a repository to download and analyze its codebase.
             </p>
           </div>
           <Button asChild className="gap-2">
             <Link href="/repositories">
               <GitBranch className="h-4 w-4" />
-              Connect a repository
+              Analyze a repository
             </Link>
           </Button>
         </div>
@@ -59,22 +61,22 @@ export default async function DashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard label="Projects" value={connectedCount} icon={FolderGit2} hint="connected" />
           <StatCard
-            label="Not analyzed"
-            value={notAnalyzedCount}
+            label="Analyzed"
+            value={analyzedCount}
+            icon={CheckCircle2}
+            hint="analysis complete"
+          />
+          <StatCard
+            label="In progress"
+            value={inProgressCount}
             icon={Hourglass}
-            hint="ready for Phase 3"
+            hint="analyzing now"
           />
           <StatCard
             label="Repositories"
             value={workspace.repositories.length}
             icon={GitBranch}
             hint="in your installation"
-          />
-          <StatCard
-            label="GitHub installs"
-            value={workspace.installations}
-            icon={CheckCircle2}
-            hint={workspace.installations === 1 ? "installation" : "installations"}
           />
         </div>
 
@@ -150,9 +152,10 @@ export default async function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Connected projects are stored as{" "}
-                  <span className="font-medium text-foreground">not analyzed</span>. Code analysis —
-                  architecture maps, docs, and chat — arrives in Phase 3.
+                  RepoGuide downloads your repository and builds a real map of it —{" "}
+                  <span className="font-medium text-foreground">languages, frameworks,
+                  dependencies, entry points, and structure</span>. AI-powered codebase
+                  chat is planned next.
                 </p>
               </CardContent>
             </Card>
@@ -165,7 +168,7 @@ export default async function DashboardPage() {
                 <Button asChild variant="outline" className="w-full justify-start gap-2">
                   <Link href="/repositories">
                     <Plus className="h-4 w-4" />
-                    Connect a repository
+                    Analyze a repository
                   </Link>
                 </Button>
                 {workspace.installUrl && (

@@ -71,15 +71,70 @@ model Repository {
 }
 
 model Project {
-  id           String     @id @default(cuid())
+  id           String       @id @default(cuid())
   name         String
   description  String?
   language     String?
-  status       String     @default("NOT_ANALYZED")
-  repositoryId String     @unique
-  repository   Repository @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  status       String       @default("QUEUED")
+  repositoryId String       @unique
+  repository   Repository   @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
   userId       String
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sourceFiles  SourceFile[]
+  dependencies Dependency[]
+  analyses     Analysis[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model SourceFile {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  path       String
+  name       String
+  extension  String
+  language   String?
+  size       Int
+  lineCount  Int
+  hash       String
+  directory  String
+  createdAt  DateTime @default(now())
+
+  @@unique([projectId, path])
+  @@index([projectId, language])
+}
+
+model Dependency {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name      String
+  version   String?
+  type      String
+  scope     String?
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, type, name])
+  @@index([projectId])
+}
+
+model Analysis {
+  id           String    @id @default(cuid())
+  projectId    String
+  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status       String    @default("QUEUED")
+  step         String?
+  error        String?
+  summary      Json?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([projectId])
+  @@index([status])
 }
