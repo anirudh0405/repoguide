@@ -78,7 +78,7 @@ export async function runAnalysis(projectId: string): Promise<void> {
 
     await setStatus("DOWNLOADING", `Downloading ${repo.fullName} from the ${defaultBranch} branch…`);
     tempDir = await createTempDir();
-    const rootDir = await downloadAndExtract(repo.owner, repo.name, defaultBranch, userToken, tempDir);
+    const rootDir = await downloadAndExtract(repo.owner, repo.name, defaultBranch, tempDir, userToken);
 
     await setStatus("PARSING", "Discovering files…");
     const files = await ingestFiles(rootDir);
