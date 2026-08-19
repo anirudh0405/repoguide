@@ -16,7 +16,7 @@ import {
 } from "@/lib/analyzer/ingest";
 import { buildDirectoryTree } from "@/lib/analyzer/tree";
 import { getPrisma } from "@/lib/db";
-import { getFreshUserAccessToken, GitHubError } from "@/lib/github";
+import { getCommitSha, getFreshUserAccessToken, GitHubError } from "@/lib/github";
 import type { AnalysisPhase, AnalysisSummary } from "@/lib/types";
 
 export const ACTIVE_STATUSES = new Set<AnalysisPhase>([
@@ -148,9 +148,16 @@ export async function runAnalysis(projectId: string): Promise<void> {
       defaultBranch,
     };
 
+    // Record the exact commit that was analyzed. Onboarding guides are tied to
+    // this SHA so a guide is only reused while the code hasn't changed.
+    const commitSha = await getCommitSha(userToken, repo.owner, repo.name, defaultBranch);
+
     await prisma.analysis.update({
       where: { id: analysis.id },
-      data: { summary: JSON.parse(JSON.stringify(summary)) },
+      data: {
+        summary: JSON.parse(JSON.stringify(summary)),
+        commitSha,
+      },
     });
 
     await setStatus("COMPLETED", "Building project structure…");

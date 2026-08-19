@@ -104,14 +104,13 @@ export function AppSidebar({ user }: { user: CurrentUser }) {
             <div className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground">
               <Workflow className="h-4 w-4 shrink-0" />
               Analysis
-              <ComingSoon className="ml-auto" label="Phase 3" />
             </div>
           </div>
         </nav>
 
         <div className="border-t p-3">
           <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
-            GitHub is connected. Code analysis arrives in the next phase.
+            GitHub is connected. AI onboarding guides are powered by NVIDIA Nemotron.
           </p>
         </div>
       </aside>

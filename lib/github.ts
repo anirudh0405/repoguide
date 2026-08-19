@@ -257,6 +257,23 @@ export async function getRepository(
   return (await githubFetch(`/repositories/${repoId}`, { token: installationToken })) as GitHubRepo;
 }
 
+/** Resolve the commit SHA of a branch (or any ref) for a repository. */
+export async function getCommitSha(
+  token: string,
+  owner: string,
+  name: string,
+  ref: string
+): Promise<string | null> {
+  try {
+    const data = (await githubFetch(`/repos/${owner}/${name}/commits/${encodeURIComponent(ref)}`, {
+      token,
+    })) as { sha?: string };
+    return data.sha ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // Installation access tokens are short-lived and never persisted. They are
 // cached in memory only for the lifetime of a single server process and a
 // fresh token is generated whenever the cache is cold or expired.

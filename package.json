@@ -35,7 +35,8 @@
     "react-dom": "19.2.3",
     "server-only": "^0.0.1",
     "tailwind-merge": "^3.6.0",
-    "tar": "^7.5.22"
+    "tar": "^7.5.22",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

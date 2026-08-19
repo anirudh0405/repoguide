@@ -126,6 +126,7 @@ export function AnalysisView({ projectId, initial }: { projectId: string; initia
   if (data.analysis?.status === "COMPLETED" && data.analysis.summary) {
     return (
       <ProjectOverview
+        projectId={projectId}
         repository={data.repository}
         summary={data.analysis.summary}
         dependencies={data.dependencies}

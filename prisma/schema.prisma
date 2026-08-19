@@ -83,6 +83,7 @@ model Project {
   sourceFiles  SourceFile[]
   dependencies Dependency[]
   analyses     Analysis[]
+  guides       OnboardingGuide[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -123,17 +124,38 @@ model Dependency {
 }
 
 model Analysis {
-  id           String    @id @default(cuid())
+  id           String             @id @default(cuid())
   projectId    String
-  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  status       String    @default("QUEUED")
+  project      Project            @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status       String             @default("QUEUED")
   step         String?
   error        String?
+  commitSha    String?
   summary      Json?
   startedAt    DateTime?
   completedAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  guides       OnboardingGuide[]
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model OnboardingGuide {
+  id         String       @id @default(cuid())
+  projectId  String
+  project    Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  analysisId String?
+  analysis   Analysis?    @relation(fields: [analysisId], references: [id], onDelete: SetNull)
+  commitSha  String?
+  model      String?
+  status     String       @default("GENERATING")
+  step       String?
+  error      String?
+  content    Json?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
   @@index([projectId])
   @@index([status])

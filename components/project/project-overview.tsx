@@ -2,6 +2,7 @@
 
 import { ExternalLink, GitBranch, Lock, Star, Unlock } from "lucide-react";
 
+import { DocumentationPanel } from "@/components/project/documentation-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,6 +12,7 @@ import { formatCompactNumber } from "@/lib/utils";
 import type { AnalysisSummary, Confidence, EntryPointInfo } from "@/lib/types";
 
 interface ProjectOverviewProps {
+  projectId: string;
   repository: {
     owner: string;
     name: string;
@@ -56,6 +58,7 @@ function EmptyNote({ text }: { text: string }) {
 }
 
 export function ProjectOverview({
+  projectId,
   repository,
   summary,
   dependencies,
@@ -125,6 +128,8 @@ export function ProjectOverview({
           </div>
         </CardContent>
       </Card>
+
+      <DocumentationPanel projectId={projectId} />
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
