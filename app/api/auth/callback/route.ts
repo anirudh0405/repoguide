@@ -26,13 +26,17 @@ export async function GET(request: NextRequest) {
   }
 
   // GitHub App installation callback: no authorization code, just the
-  // installation confirmation. Installations are re-synced from GitHub on the
-  // repositories page, so a redirect is enough here.
+  // installation confirmation.
   if (!code) {
-    if (setupAction) {
-      return NextResponse.redirect(new URL("/repositories?installed=1", request.url));
+    if (setupAction === "install") {
+      // First-time install: GitHub did not return an authorization code, so
+      // no session can be created yet. Restart the OAuth flow — now that the
+      // app is installed, the next authorize request will return a code.
+      return NextResponse.redirect(new URL("/api/auth/github?next=/repositories", request.url));
     }
-    return NextResponse.redirect(new URL("/?auth=required", request.url));
+    // Update/other callbacks: the user already has a session. Installations
+    // are re-synced lazily on the repositories page.
+    return NextResponse.redirect(new URL("/repositories?installed=1", request.url));
   }
 
   // Verify the OAuth state parameter to prevent CSRF.
