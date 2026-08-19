@@ -102,9 +102,7 @@ export default async function ProjectPage({ params }: PageProps) {
           title={`${project.repository.name} is not analyzed yet`}
           description="Code analysis — architecture maps, documentation, and Q&A — arrives in Phase 3."
           actionLabel="Back to repositories"
-          onAction={() => {
-            window.location.href = "/repositories";
-          }}
+          actionHref="/repositories"
         />
       </div>
     </AppShell>

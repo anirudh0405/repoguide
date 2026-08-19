@@ -102,9 +102,7 @@ export default async function DashboardPage() {
                 title="No projects yet"
                 description="Connect a repository from your GitHub App installation to create your first project."
                 actionLabel="Connect a repository"
-                onAction={() => {
-                  window.location.href = "/repositories";
-                }}
+                actionHref="/repositories"
               />
             )}
           </div>

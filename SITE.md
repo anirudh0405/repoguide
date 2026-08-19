@@ -69,6 +69,7 @@ Stored in a PostgreSQL database (Supabase). A project only records the repositor
 
 ## Recent Changes
 
+- 2026-08-19: **Fixed a crash on the Dashboard and project pages.** The "no projects yet" and "not analyzed yet" empty states used a button action that didn't work from the server-rendered pages, causing a runtime error. They now use a normal link instead, so the buttons work again.
 - 2026-08-19: **Fixed first-time sign-in.** Previously, the very first time someone connected their GitHub account the app wasn't installed yet, so GitHub came back without an authorization code and the person was never signed in (just bounced back to the home page). Now, when that happens, the app automatically starts the GitHub sign-in again — and since the app is now installed, the second round completes and signs the person in.
 - 2026-08-18: **Phase 2 live.** Real GitHub sign-in, real repository listing, project creation with "Not analyzed yet" status, PostgreSQL data layer, session-based auth. Removed the mock data layer and the placeholder project workspace. Verified: GitHub App JWT works, app permissions are read-only, database tables created and reachable from the app, build/lint/typecheck pass.
 
