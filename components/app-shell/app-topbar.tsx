@@ -82,7 +82,10 @@ function UserMenu({ user }: { user: CurrentUser }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-2 rounded-md p-1.5 transition-colors hover:bg-accent">
+        <button
+          className="flex items-center gap-2 rounded-md p-1.5 transition-colors hover:bg-accent"
+          suppressHydrationWarning
+        >
           <Avatar className="h-7 w-7">
             {user.avatarUrl ? (
               <AvatarImage src={user.avatarUrl} alt={displayName} />
