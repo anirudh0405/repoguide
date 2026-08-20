@@ -30,6 +30,15 @@ export interface AIProvider {
   readonly model: string;
   /** Returns the raw model reply. The caller is responsible for validation. */
   generateStructured(systemPrompt: string, userPrompt: string): Promise<string>;
+  /**
+   * Streams a free-form (non-JSON) reply. `onToken` is called with each
+   * content delta as it arrives; resolves with the complete reply text.
+   */
+  generateText(
+    systemPrompt: string,
+    userPrompt: string,
+    onToken: (delta: string) => void
+  ): Promise<string>;
 }
 
 /** True when at least one provider has been configured. */

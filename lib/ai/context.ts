@@ -86,7 +86,7 @@ const SENSITIVE_NAMES = new Set([
   "client-secret.json",
 ]);
 
-function isSensitivePath(path: string): boolean {
+export function isSensitivePath(path: string): boolean {
   const lower = path.toLowerCase();
   const segments = lower.split("/");
   const base = segments[segments.length - 1];

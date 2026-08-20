@@ -2,6 +2,7 @@
 
 import { ExternalLink, GitBranch, Lock, Star, Unlock } from "lucide-react";
 
+import { ChatPanel } from "@/components/project/chat-panel";
 import { DocumentationPanel } from "@/components/project/documentation-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -130,6 +131,8 @@ export function ProjectOverview({
       </Card>
 
       <DocumentationPanel projectId={projectId} />
+
+      <ChatPanel projectId={projectId} />
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">

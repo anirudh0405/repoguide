@@ -1,5 +1,6 @@
 import "server-only";
 
+import { startIndexing } from "@/lib/ai/indexer";
 import {
   detectDependencies,
   detectEntryPoints,
@@ -161,6 +162,10 @@ export async function runAnalysis(projectId: string): Promise<void> {
     });
 
     await setStatus("COMPLETED", "Building project structure…");
+
+    // Phase 5: kick off semantic indexing in the background so the repository
+    // is ready for codebase Q&A shortly after analysis finishes.
+    startIndexing(projectId);
   } catch (error) {
     const message =
       error instanceof GitHubError || error instanceof IngestError || error instanceof Error

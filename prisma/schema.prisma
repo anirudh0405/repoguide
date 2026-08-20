@@ -16,6 +16,7 @@ model User {
   account        GitHubAccount?
   installations  GitHubInstallation[]
   projects       Project[]
+  chatSessions   ChatSession[]
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 }
@@ -84,6 +85,8 @@ model Project {
   dependencies Dependency[]
   analyses     Analysis[]
   guides       OnboardingGuide[]
+  codeIndex    CodeIndex?
+  chatSessions ChatSession[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -159,4 +162,71 @@ model OnboardingGuide {
 
   @@index([projectId])
   @@index([status])
+}
+
+// Phase 5 — codebase Q&A (RAG).
+//
+// CodeIndex tracks the state of a project's semantic index. The vector column
+// on FileChunk (vector(1024), added via prisma/vector-setup.sql) is never seen
+// by Prisma — it is only read/written through raw SQL so `db push` stays safe.
+
+model CodeIndex {
+  id         String   @id @default(cuid())
+  projectId  String   @unique
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  status     String   @default("INDEXING") // INDEXING | COMPLETED | FAILED | EMPTY
+  step       String?
+  error      String?
+  analysisId String?
+  commitSha  String?
+  chunkCount Int      @default(0)
+  model      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([status])
+}
+
+model FileChunk {
+  id         String   @id @default(cuid())
+  projectId  String
+  fileId     String
+  filePath   String
+  chunkIndex Int
+  content    String
+  startLine  Int
+  endLine    Int
+  tokenCount Int?
+  createdAt  DateTime @default(now())
+
+  @@unique([projectId, fileId, chunkIndex])
+  @@index([projectId])
+  @@index([projectId, filePath])
+}
+
+model ChatSession {
+  id        String        @id @default(cuid())
+  projectId String
+  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?
+  messages  ChatMessage[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([projectId])
+  @@index([userId, updatedAt])
+}
+
+model ChatMessage {
+  id        String      @id @default(cuid())
+  sessionId String
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      String // "user" | "assistant"
+  content   String
+  sources   Json?
+  createdAt DateTime    @default(now())
+
+  @@index([sessionId])
 }
