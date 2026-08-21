@@ -254,8 +254,12 @@ async function applyVectors(rows: { id: string; vector: number[] }[]): Promise<v
   const params: unknown[] = [];
   rows.forEach((row, offset) => {
     const base = offset * 2 + 1;
+    // PostgreSQL's vector type expects a literal like `[0.1,0.2,…]`. Passing a
+    // JS array would be serialized as a Postgres array literal, so convert it
+    // to a string.
+    const literal = `[${row.vector.join(",")}]`;
     placeholders.push(`($${base}::text, $${base + 1}::vector)`);
-    params.push(row.id, row.vector);
+    params.push(row.id, literal);
   });
 
   await prisma.$queryRawUnsafe(

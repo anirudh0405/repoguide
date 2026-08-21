@@ -35,39 +35,41 @@ export async function runAnalysis(projectId: string): Promise<void> {
   const prisma = getPrisma();
   if (!prisma) return;
 
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    include: { repository: true },
-  });
-  if (!project) return;
-
-  const analysis = await prisma.analysis.create({
-    data: { projectId, status: "QUEUED", startedAt: new Date() },
-  });
-
-  const setStatus = async (
-    status: AnalysisPhase,
-    step?: string | null,
-    error?: string | null
-  ): Promise<void> => {
-    await prisma.analysis.update({
-      where: { id: analysis.id },
-      data: {
-        status,
-        step: step ?? null,
-        error: error ?? null,
-        ...(status === "COMPLETED" || status === "FAILED" ? { completedAt: new Date() } : {}),
-      },
-    });
-    await prisma.project.update({ where: { id: projectId }, data: { status } });
-  };
-
-  // Clear prior results so re-runs are idempotent.
-  await prisma.sourceFile.deleteMany({ where: { projectId } });
-  await prisma.dependency.deleteMany({ where: { projectId } });
-
+  let analysisId: string | null = null;
   let tempDir: string | null = null;
   try {
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      include: { repository: true },
+    });
+    if (!project) return;
+
+    const analysis = await prisma.analysis.create({
+      data: { projectId, status: "QUEUED", startedAt: new Date() },
+    });
+    analysisId = analysis.id;
+
+    const setStatus = async (
+      status: AnalysisPhase,
+      step?: string | null,
+      error?: string | null
+    ): Promise<void> => {
+      await prisma.analysis.update({
+        where: { id: analysis.id },
+        data: {
+          status,
+          step: step ?? null,
+          error: error ?? null,
+          ...(status === "COMPLETED" || status === "FAILED" ? { completedAt: new Date() } : {}),
+        },
+      });
+      await prisma.project.update({ where: { id: projectId }, data: { status } });
+    };
+
+    // Clear prior results so re-runs are idempotent.
+    await prisma.sourceFile.deleteMany({ where: { projectId } });
+    await prisma.dependency.deleteMany({ where: { projectId } });
+
     const account = await prisma.gitHubAccount.findUnique({ where: { userId: project.userId } });
     if (!account || !account.accessToken) {
       throw new Error("Your GitHub account is no longer connected. Reconnect and try again.");
@@ -172,7 +174,15 @@ export async function runAnalysis(projectId: string): Promise<void> {
         ? error.message
         : "Analysis failed unexpectedly.";
     console.error("[analysis] failed:", error);
-    await setStatus("FAILED", null, message);
+    if (analysisId) {
+      await prisma.analysis
+        .update({
+          where: { id: analysisId },
+          data: { status: "FAILED", error: message, completedAt: new Date() },
+        })
+        .catch(() => {});
+    }
+    await prisma.project.update({ where: { id: projectId }, data: { status: "FAILED" } }).catch(() => {});
   } finally {
     if (tempDir) {
       await removeTempDir(tempDir);

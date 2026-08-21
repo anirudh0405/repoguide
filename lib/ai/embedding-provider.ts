@@ -1,8 +1,8 @@
 // Embedding provider for retrieval.
 //
 // NVIDIA NIM exposes an OpenAI-compatible /v1/embeddings endpoint. The default
-// model (nvidia/embed-qa-4) is a retrieval QA model with 1024-dimension output
-// and is dual-mode: use `input_type: "passage"` when indexing code and
+// model (nvidia/nv-embedqa-e5-v5) is a retrieval QA model with 1024-dimension
+// output and is dual-mode: use `input_type: "passage"` when indexing code and
 // `input_type: "query"` when embedding a user question (mismatching modes
 // measurably hurts retrieval accuracy).
 //
@@ -14,7 +14,7 @@ import "server-only";
 import { AIError } from "@/lib/ai/ai-provider";
 
 const DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1";
-const DEFAULT_MODEL = "nvidia/embed-qa-4";
+const DEFAULT_MODEL = "nvidia/nv-embedqa-e5-v5";
 export const DEFAULT_EMBEDDING_DIMENSIONS = 1024;
 const REQUEST_TIMEOUT_MS = 60_000;
 const BATCH_SIZE = 32;
@@ -28,23 +28,28 @@ export interface EmbeddingProvider {
   embedTexts(texts: string[], inputType: EmbeddingInputType): Promise<number[][]>;
 }
 
+function envValue(key: string): string | undefined {
+  const value = process.env[key];
+  return value && value.trim().length > 0 ? value : undefined;
+}
+
 function configuredBaseUrl(): string {
-  return (process.env.EMBEDDING_BASE_URL ?? process.env.NVIDIA_BASE_URL ?? DEFAULT_BASE_URL).replace(
+  return (envValue("EMBEDDING_BASE_URL") ?? envValue("NVIDIA_BASE_URL") ?? DEFAULT_BASE_URL).replace(
     /\/+$/,
     ""
   );
 }
 
 function configuredModel(): string {
-  return process.env.EMBEDDING_MODEL ?? DEFAULT_MODEL;
+  return envValue("EMBEDDING_MODEL") ?? DEFAULT_MODEL;
 }
 
 function configuredKey(): string {
-  return process.env.EMBEDDING_API_KEY ?? process.env.NVIDIA_API_KEY ?? "";
+  return envValue("EMBEDDING_API_KEY") ?? envValue("NVIDIA_API_KEY") ?? "";
 }
 
 function configuredDimensions(): number {
-  const parsed = Number.parseInt(process.env.EMBEDDING_DIMENSIONS ?? "", 10);
+  const parsed = Number.parseInt(envValue("EMBEDDING_DIMENSIONS") ?? "", 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_EMBEDDING_DIMENSIONS;
 }
 
@@ -98,7 +103,9 @@ class NIMEmbeddingProvider implements EmbeddingProvider {
       input: texts,
       encoding_format: "float",
       input_type: inputType,
-      truncate: "NONE",
+      // Truncate (keep the start) rather than error if a chunk is somehow over
+      // the model's token limit — indexing must never die on one big chunk.
+      truncate: "END",
     };
 
     const response = await fetch(`${configuredBaseUrl()}/embeddings`, {
@@ -115,6 +122,12 @@ class NIMEmbeddingProvider implements EmbeddingProvider {
     // Some OpenAI-compatible gateways reject extra NVIDIA-specific fields.
     // Retry once without them before giving up.
     if (response.status === 400 || response.status === 422) {
+      let firstDetail = "";
+      try {
+        firstDetail = (await response.text()).slice(0, 200).replace(/\s+/g, " ").trim();
+      } catch {
+        // Response already consumed or unreadable.
+      }
       const retry = await fetch(`${configuredBaseUrl()}/embeddings`, {
         method: "POST",
         headers: {
@@ -125,7 +138,17 @@ class NIMEmbeddingProvider implements EmbeddingProvider {
         cache: "no-store",
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
-      return this.parseResponse(retry);
+      if (retry.ok) return this.parseResponse(retry);
+      let retryDetail = "";
+      try {
+        retryDetail = (await retry.text()).slice(0, 200).replace(/\s+/g, " ").trim();
+      } catch {
+        // Response already consumed or unreadable.
+      }
+      throw new AIError(
+        "SERVER_ERROR",
+        `The embedding provider rejected the request (HTTP ${retry.status}).${retryDetail ? ` ${retryDetail}` : ""}${firstDetail ? ` (initial response: ${firstDetail})` : ""}`
+      );
     }
 
     return this.parseResponse(response);
@@ -145,9 +168,15 @@ class NIMEmbeddingProvider implements EmbeddingProvider {
       );
     }
     if (!response.ok) {
+      let detail = "";
+      try {
+        detail = (await response.text()).slice(0, 200).replace(/\s+/g, " ").trim();
+      } catch {
+        // Response already consumed or unreadable.
+      }
       throw new AIError(
         "SERVER_ERROR",
-        `The embedding provider returned an error (HTTP ${response.status}).`
+        `The embedding provider returned an error (HTTP ${response.status}).${detail ? ` ${detail}` : ""}`
       );
     }
 

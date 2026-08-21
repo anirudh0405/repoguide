@@ -32,6 +32,10 @@ export async function searchChunks(
   const prisma = getPrisma();
   if (!prisma) return [];
 
+  // Postgres can't cast a JS array literal to vector, so interpolate the
+  // embedding as a pgvector string literal (`[x,y,z]`) like the indexer does.
+  const literal = `[${embedding.join(",")}]`;
+
   const rows = await prisma.$queryRawUnsafe<
     {
       id: string;
@@ -50,7 +54,7 @@ export async function searchChunks(
      ORDER BY "vector" <=> $2::vector
      LIMIT $3`,
     projectId,
-    embedding,
+    literal,
     limit
   );
 

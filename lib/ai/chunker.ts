@@ -12,7 +12,11 @@ export interface CodeChunk {
   endLine: number;
 }
 
-export const DEFAULT_CHUNK_MAX_CHARS = 2000;
+// Chunk cap is deliberately small: the default embedding model
+// (nvidia/nv-embedqa-e5-v5) only accepts 512 tokens per input, and dense
+// content like HTML tokenizes at ~1.5-2 characters per token, so chunks must
+// stay well under ~600 characters to always embed in full.
+export const DEFAULT_CHUNK_MAX_CHARS = 600;
 export const DEFAULT_CHUNK_MAX_LINES = 80;
 
 // Lines that look like the start of a declaration (function, class, method,
@@ -59,6 +63,10 @@ export interface ChunkOptions {
 /**
  * Splits source text into meaningful chunks. Prefers declaration boundaries;
  * falls back to blank-line-separated blocks for files with no declarations.
+ *
+ * Chunks are guaranteed to stay under `maxCharsPerChunk` characters (checked
+ * per chunk), so they fit within the embedding model's token limit — including
+ * files with very long single lines.
  */
 export function chunkCode(content: string, options: ChunkOptions = {}): CodeChunk[] {
   const maxChars = options.maxCharsPerChunk ?? DEFAULT_CHUNK_MAX_CHARS;
@@ -67,16 +75,42 @@ export function chunkCode(content: string, options: ChunkOptions = {}): CodeChun
   const lines = content.split(/\r?\n/);
   const chunks: CodeChunk[] = [];
 
+  // Push lines [startIdx, endIdx) as one or more chunks, splitting whenever a
+  // block (or a single line) would exceed maxChars.
+  const pushRange = (startIdx: number, endIdx: number): void => {
+    let s = startIdx;
+    while (s < endIdx) {
+      let e = s + 1;
+      let joined = lines[s];
+      while (e < endIdx && joined.length + 1 + lines[e].length <= maxChars) {
+        joined += "\n" + lines[e];
+        e += 1;
+      }
+
+      if (joined.length > maxChars) {
+        // A single line is longer than the cap — split it by characters.
+        let offset = 0;
+        while (offset < joined.length) {
+          let cut = joined.lastIndexOf("\n", offset + maxChars - 1);
+          if (cut < offset) cut = offset + maxChars;
+          const piece = joined.slice(offset, cut);
+          if (piece.trim().length > 0) {
+            chunks.push({ content: piece, startLine: s + 1, endLine: s + 1 });
+          }
+          offset = cut;
+        }
+        s += 1;
+      } else {
+        if (joined.trim().length > 0) {
+          chunks.push({ content: joined, startLine: s + 1, endLine: e });
+        }
+        s = e;
+      }
+    }
+  };
+
   let start = 0;
   let cursor = 0;
-
-  const pushChunk = (endExclusive: number) => {
-    if (endExclusive <= start) return;
-    const slice = lines.slice(start, endExclusive);
-    const text = slice.join("\n").replace(/\s+$/, "");
-    if (text.trim().length === 0) return;
-    chunks.push({ content: text, startLine: start + 1, endLine: endExclusive });
-  };
 
   while (cursor < lines.length) {
     const isDeclaration = isDeclarationLine(lines[cursor]);
@@ -85,7 +119,7 @@ export function chunkCode(content: string, options: ChunkOptions = {}): CodeChun
       lines.slice(start, cursor + 1).join("\n").length >= maxChars;
 
     if (isDeclaration && cursor > start) {
-      pushChunk(cursor);
+      pushRange(start, cursor);
       start = cursor;
     } else if (blockTooBig) {
       // Cut at the last blank line inside the current block for a clean break.
@@ -96,7 +130,7 @@ export function chunkCode(content: string, options: ChunkOptions = {}): CodeChun
           break;
         }
       }
-      pushChunk(cut);
+      pushRange(start, cut);
       start = cut;
       if (start >= lines.length) break;
       cursor = start;
@@ -106,6 +140,6 @@ export function chunkCode(content: string, options: ChunkOptions = {}): CodeChun
     cursor += 1;
   }
 
-  pushChunk(lines.length);
-  return chunks.filter((chunk) => chunk.content.trim().length > 0);
+  pushRange(start, lines.length);
+  return chunks;
 }
