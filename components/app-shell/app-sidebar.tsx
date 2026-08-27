@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   BarChart3,
-  BrainCircuit,
   FolderGit2,
   Home,
   Settings,
@@ -12,13 +11,6 @@ import {
 } from "lucide-react";
 
 import { ShortLogo } from "@/components/brand";
-import { ComingSoon } from "@/components/coming-soon";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { CurrentUser } from "@/lib/auth";
 
@@ -26,8 +18,7 @@ const navItems = [
   { label: "Home", href: "/", icon: Home, group: "Workspace" },
   { label: "Dashboard", href: "/dashboard", icon: BarChart3, group: "Workspace" },
   { label: "Repositories", href: "/repositories", icon: FolderGit2, group: "Workspace" },
-  { label: "AI Chat", href: "/dashboard", icon: BrainCircuit, group: "Workspace", comingSoon: true },
-  { label: "Settings", href: "/dashboard", icon: Settings, group: "Workspace", comingSoon: true },
+  { label: "Settings", href: "/settings", icon: Settings, group: "Workspace" },
 ];
 
 const chatItems = [
@@ -53,7 +44,6 @@ function SidebarItem({
     >
       <item.icon className="h-4 w-4 shrink-0" />
       <span className="flex-1">{item.label}</span>
-      {item.comingSoon && <ComingSoon label="Soon" />}
     </Link>
   );
 }
@@ -82,7 +72,7 @@ export function AppSidebar({ user }: { user: CurrentUser }) {
               <SidebarItem
                 key={item.label}
                 item={item}
-                active={item.comingSoon ? false : pathname === item.href}
+                active={pathname === item.href}
               />
             ))}
           </div>
@@ -124,26 +114,20 @@ export function AppSidebar({ user }: { user: CurrentUser }) {
 function MobileSidebar({ pathname }: { pathname: string }) {
   return (
     <nav className="fixed inset-x-0 bottom-0 z-30 flex items-center justify-around border-t bg-background/95 backdrop-blur lg:hidden">
-      {navItems.slice(0, 4).map((item) => {
-        const active = item.comingSoon ? false : pathname === item.href;
+      {navItems.map((item) => {
+        const active = pathname === item.href;
         return (
-          <TooltipProvider key={item.label}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px]",
-                    active ? "text-brand" : "text-muted-foreground"
-                  )}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.label}
-                </Link>
-              </TooltipTrigger>
-              {item.comingSoon && <TooltipContent>Coming soon</TooltipContent>}
-            </Tooltip>
-          </TooltipProvider>
+          <Link
+            key={item.label}
+            href={item.href}
+            className={cn(
+              "flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px]",
+              active ? "text-brand" : "text-muted-foreground"
+            )}
+          >
+            <item.icon className="h-5 w-5" />
+            {item.label}
+          </Link>
         );
       })}
     </nav>

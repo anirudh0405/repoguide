@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { getPrisma } from "@/lib/db";
+import { getUsageInfo } from "@/lib/usage";
 
 export const SESSION_COOKIE = "repoguide_session";
 export const OAUTH_STATE_COOKIE = "repoguide_oauth_state";
@@ -107,6 +108,13 @@ export interface CurrentUser {
   email: string | null;
   avatarUrl: string | null;
   login: string | null;
+  plan: string;
+  onboardingCompleted: boolean;
+  onboardingStep: string | null;
+}
+
+export interface CurrentUserWithUsage extends CurrentUser {
+  usage: Awaited<ReturnType<typeof getUsageInfo>>;
 }
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
@@ -128,6 +136,40 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
       email: user.email,
       avatarUrl: user.avatarUrl,
       login: user.account?.login ?? null,
+      plan: user.plan,
+      onboardingCompleted: user.onboardingCompleted,
+      onboardingStep: user.onboardingStep,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function getCurrentUserWithUsage(): Promise<CurrentUserWithUsage | null> {
+  const userId = await getSessionUserId();
+  if (!userId) return null;
+
+  const prisma = getPrisma();
+  if (!prisma) return null;
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { account: true },
+    });
+    if (!user) return null;
+
+    const usage = await getUsageInfo(userId);
+    return {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      avatarUrl: user.avatarUrl,
+      login: user.account?.login ?? null,
+      plan: user.plan,
+      onboardingCompleted: user.onboardingCompleted,
+      onboardingStep: user.onboardingStep,
+      usage,
     };
   } catch {
     return null;
@@ -136,6 +178,14 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
 
 export async function requireUser(): Promise<CurrentUser> {
   const user = await getCurrentUser();
+  if (!user) {
+    redirect("/?auth=required");
+  }
+  return user;
+}
+
+export async function requireUserWithUsage(): Promise<CurrentUserWithUsage> {
+  const user = await getCurrentUserWithUsage();
   if (!user) {
     redirect("/?auth=required");
   }

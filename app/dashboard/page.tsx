@@ -7,15 +7,16 @@ import { StatCard } from "@/components/dashboard/stat-card";
 import { EmptyState } from "@/components/ui-states/empty-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { requireUser } from "@/lib/auth";
+import { requireUserWithUsage } from "@/lib/auth";
 import { isActiveStatus } from "@/lib/analyzer";
 import { getPrisma } from "@/lib/db";
 import { getWorkspaceState, getUserProjects, type WorkspaceState } from "@/lib/workspace";
+import { OnboardingChecklist } from "@/components/onboarding/onboarding-checklist";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const user = await requireUser();
+  const user = await requireUserWithUsage();
 
   const prisma = getPrisma();
   let workspace: WorkspaceState;
@@ -41,6 +42,8 @@ export default async function DashboardPage() {
   return (
     <AppShell title="Overview" user={user}>
       <div className="flex flex-col gap-6">
+        {!user.onboardingCompleted && <OnboardingChecklist />}
+
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="font-[family-name:var(--font-display)] text-2xl font-bold tracking-tight">

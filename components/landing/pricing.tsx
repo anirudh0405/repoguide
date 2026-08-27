@@ -4,18 +4,24 @@ import { SectionHeading } from "@/components/landing/section-heading";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { getPlanLimits, getPlanPrice } from "@/lib/config/plans";
+
+const FREE_LIMITS = getPlanLimits("FREE");
+const PRO_LIMITS = getPlanLimits("PRO");
+const PRO_PRICE = getPlanPrice("PRO");
 
 const tiers = [
   {
-    name: "Starter",
-    price: "$0",
+    name: "Free",
+    price: "₹0",
     period: "/month",
-    description: "For individuals ramping on their own projects.",
+    description: "For individuals exploring codebases on their own.",
     features: [
-      "3 analyzed repositories",
+      `${FREE_LIMITS.maxRepositories} repository`,
       "Architecture maps",
-      "Auto-generated docs",
-      "Flow explorer",
+      "Auto-generated onboarding guides",
+      `${FREE_LIMITS.maxAiQuestionsPerMonth} AI questions/month`,
+      "Codebase Q&A chat",
       "Community support",
     ],
     cta: "Start free",
@@ -23,34 +29,20 @@ const tiers = [
   },
   {
     name: "Pro",
-    price: "$19",
+    price: `₹${PRO_PRICE.monthly.toLocaleString()}`,
     period: "/month",
-    description: "For engineers onboarding across real codebases.",
+    description: "For engineers onboarding across real codebases daily.",
     features: [
-      "Unlimited repositories",
-      "Everything in Starter",
-      "Codebase Q&A chat",
-      "Change summaries",
+      `${PRO_LIMITS.maxRepositories} repositories`,
+      "Everything in Free",
+      `${PRO_LIMITS.maxAiQuestionsPerMonth} AI questions/month`,
+      "Automatic re-analysis on changes",
+      "Advanced architecture analysis",
       "Priority analysis queue",
       "Email support",
     ],
-    cta: "Coming in phase 2",
+    cta: "Upgrade to Pro",
     highlighted: true,
-  },
-  {
-    name: "Team",
-    price: "$49",
-    period: "/month",
-    description: "For teams standardizing onboarding.",
-    features: [
-      "Everything in Pro",
-      "Shared team workspace",
-      "SSO & SAML",
-      "Audit logs",
-      "Dedicated support",
-    ],
-    cta: "Coming in phase 2",
-    highlighted: false,
   },
 ];
 
@@ -61,10 +53,10 @@ export function Pricing() {
         <SectionHeading
           eyebrow="Pricing"
           title="Simple pricing that scales with you"
-          description="Start free with three repositories. Upgrade when the map becomes part of your daily workflow."
+          description="Start free with one repository. Upgrade when the map becomes part of your daily workflow."
         />
 
-        <div className="mx-auto grid max-w-4xl gap-6 lg:grid-cols-3">
+        <div className="mx-auto grid max-w-4xl gap-6 lg:grid-cols-2">
           {tiers.map((tier) => (
             <div
               key={tier.name}
@@ -108,7 +100,11 @@ export function Pricing() {
                 })}
               </ul>
 
-              <Button asChild variant={tier.highlighted ? "brand" : "outline"} className="w-full">
+              <Button
+                asChild
+                variant={tier.highlighted ? "brand" : "outline"}
+                className="w-full"
+              >
                 <Link href="/repositories">{tier.cta}</Link>
               </Button>
             </div>
@@ -116,8 +112,8 @@ export function Pricing() {
         </div>
 
         <p className="mt-8 text-center text-sm text-muted-foreground">
-          All plans include read-only access. Billing is handled through Stripe in a later phase;{" "}
-          <span className="text-foreground">Starter is free to use now.</span>
+          All plans include read-only GitHub access. Billing handled securely through Stripe.{" "}
+          <span className="text-foreground">Free plan is free forever.</span>
         </p>
       </div>
     </section>

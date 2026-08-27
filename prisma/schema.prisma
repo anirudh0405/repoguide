@@ -13,10 +13,18 @@ model User {
   email          String?
   name           String?
   avatarUrl      String?
+  plan           String             @default("FREE")
+  onboardingCompleted Boolean       @default(false)
+  onboardingStep String?
+  stripeCustomerId String?
+  stripeSubscriptionId String?
+  stripePriceId String?
+  stripeCurrentPeriodEnd DateTime?
   account        GitHubAccount?
   installations  GitHubInstallation[]
   projects       Project[]
   chatSessions   ChatSession[]
+  usageRecords   UsageRecord[]
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
 }
@@ -85,6 +93,7 @@ model Project {
   dependencies Dependency[]
   analyses     Analysis[]
   guides       OnboardingGuide[]
+  architecture ArchitectureGraph[]
   codeIndex    CodeIndex?
   chatSessions ChatSession[]
   createdAt    DateTime     @default(now())
@@ -92,6 +101,8 @@ model Project {
 
   @@index([userId])
   @@index([status])
+  @@index([userId, status])
+  @@index([userId, createdAt])
 }
 
 model SourceFile {
@@ -138,11 +149,14 @@ model Analysis {
   startedAt    DateTime?
   completedAt  DateTime?
   createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  guides       OnboardingGuide[]
+  updatedAt  DateTime           @updatedAt
+  guides     OnboardingGuide[]
+  architecture ArchitectureGraph[]
 
   @@index([projectId])
   @@index([status])
+  @@index([projectId, status])
+  @@index([commitSha])
 }
 
 model OnboardingGuide {
@@ -185,6 +199,7 @@ model CodeIndex {
   updatedAt  DateTime @updatedAt
 
   @@index([status])
+  @@index([commitSha])
 }
 
 model FileChunk {
@@ -216,7 +231,9 @@ model ChatSession {
   updatedAt DateTime      @updatedAt
 
   @@index([projectId])
+  @@index([userId])
   @@index([userId, updatedAt])
+  @@index([projectId, updatedAt])
 }
 
 model ChatMessage {
@@ -229,4 +246,46 @@ model ChatMessage {
   createdAt DateTime    @default(now())
 
   @@index([sessionId])
+}
+
+// Phase 6 — architecture graph.
+//
+// ArchitectureGraph stores the evidence-based component/relationship model for
+// one analyzed commit. Built deterministically from imports, routes, and
+// dependencies — no AI — so it can be regenerated at any time.
+
+model ArchitectureGraph {
+  id         String       @id @default(cuid())
+  projectId  String
+  project    Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  analysisId String?
+  analysis   Analysis?    @relation(fields: [analysisId], references: [id], onDelete: SetNull)
+  commitSha  String?
+  status     String       @default("GENERATING") // GENERATING | COMPLETED | FAILED
+  step       String?
+  error      String?
+  content    Json?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([projectId])
+  @@index([status])
+}
+
+model UsageRecord {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodStart     DateTime
+  periodEnd       DateTime
+  repositoriesAnalyzed Int   @default(0)
+  aiQuestions     Int      @default(0)
+  tokensConsumed  Int      @default(0)
+  storageUsedBytes BigInt   @default(0)
+  analysisRuns    Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, periodStart])
+  @@index([userId])
 }

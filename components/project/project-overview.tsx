@@ -1,8 +1,10 @@
 "use client";
 
-import { ExternalLink, GitBranch, Lock, Star, Unlock } from "lucide-react";
+import { useState } from "react";
+import { ExternalLink, GitBranch, Lock, RefreshCw, Star, Unlock } from "lucide-react";
 
 import { ChatPanel } from "@/components/project/chat-panel";
+import { ArchitecturePanel } from "@/components/project/architecture-panel";
 import { DocumentationPanel } from "@/components/project/documentation-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -66,6 +68,32 @@ export function ProjectOverview({
   sourceFileCount,
   completedAt,
 }: ProjectOverviewProps) {
+  const [reanalyzing, setReanalyzing] = useState(false);
+  const [reanalyzeMessage, setReanalyzeMessage] = useState<string | null>(null);
+
+  const handleReanalyze = async () => {
+    setReanalyzing(true);
+    setReanalyzeMessage(null);
+    try {
+      const res = await fetch(`/api/projects/${projectId}/reanalyze`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (data.skipped) {
+          setReanalyzeMessage(data.message);
+        } else {
+          window.location.reload();
+        }
+      } else {
+        setReanalyzeMessage(data.error || "Failed to start re-analysis");
+      }
+    } catch {
+      setReanalyzeMessage("Failed to start re-analysis");
+    } finally {
+      setReanalyzing(false);
+    }
+  };
   const languageEntries = Object.entries(summary.languages).sort(
     (a, b) => b[1].lines - a[1].lines
   );
@@ -126,11 +154,35 @@ export function ProjectOverview({
                 Open on GitHub
               </a>
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={handleReanalyze}
+              disabled={reanalyzing}
+            >
+              {reanalyzing ? (
+                <>
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                  Re-analyzing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Re-analyze
+                </>
+              )}
+            </Button>
+            {reanalyzeMessage && (
+              <span className="text-sm text-muted-foreground">{reanalyzeMessage}</span>
+            )}
           </div>
         </CardContent>
       </Card>
 
       <DocumentationPanel projectId={projectId} />
+
+      <ArchitecturePanel projectId={projectId} />
 
       <ChatPanel projectId={projectId} />
 

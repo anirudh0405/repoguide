@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
   const state = crypto.randomBytes(24).toString("hex");
   const redirectUri = `${request.nextUrl.origin}/api/auth/callback`;
 
+  console.log("Starting GitHub OAuth:", { redirectUri, state: state.slice(0, 8) });
   const response = NextResponse.redirect(new URL(getAuthorizeUrl(state, redirectUri)));
   response.cookies.set(OAUTH_STATE_COOKIE, state, stateCookieOptions());
   response.cookies.set(OAUTH_NEXT_COOKIE, safeNext, stateCookieOptions());

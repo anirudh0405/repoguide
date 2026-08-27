@@ -117,10 +117,9 @@ export async function GET(request: NextRequest) {
     response.cookies.delete(OAUTH_NEXT_COOKIE);
     return response;
   } catch (error) {
-    console.error(
-      "GitHub authorization callback failed:",
-      error instanceof Error ? error.message : error
-    );
-    return NextResponse.redirect(new URL("/?auth=error", request.url));
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("GitHub authorization callback failed:", message);
+    // Add more context to the redirect for debugging
+    return NextResponse.redirect(new URL(`/?auth=error&reason=${encodeURIComponent(message.slice(0, 100))}`, request.url));
   }
 }
