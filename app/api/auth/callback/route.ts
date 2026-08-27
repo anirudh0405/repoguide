@@ -21,7 +21,10 @@ export async function GET(request: NextRequest) {
   const state = searchParams.get("state");
   const setupAction = searchParams.get("setup_action");
 
+  console.log("[auth/callback] Received:", { code: !!code, state: !!state, setupAction, cookies: request.cookies.getAll().map(c => c.name) });
+
   if (!isGitHubConfigured()) {
+    console.error("[auth/callback] GitHub not configured");
     return NextResponse.redirect(new URL("/?auth=not_configured", request.url));
   }
 
@@ -29,20 +32,19 @@ export async function GET(request: NextRequest) {
   // installation confirmation.
   if (!code) {
     if (setupAction === "install") {
-      // First-time install: GitHub did not return an authorization code, so
-      // no session can be created yet. Restart the OAuth flow — now that the
-      // app is installed, the next authorize request will return a code.
+      console.log("[auth/callback] First-time install, restarting OAuth");
       return NextResponse.redirect(new URL("/api/auth/github?next=/repositories", request.url));
     }
-    // Update/other callbacks: the user already has a session. Installations
-    // are re-synced lazily on the repositories page.
+    console.log("[auth/callback] Installation callback, redirecting to repositories");
     return NextResponse.redirect(new URL("/repositories?installed=1", request.url));
   }
 
   // Verify the OAuth state parameter to prevent CSRF.
   const expectedState = request.cookies.get(OAUTH_STATE_COOKIE)?.value;
+  console.log("[auth/callback] State check:", { expectedState: !!expectedState, stateMatch: state === expectedState });
   if (!state || !expectedState || state !== expectedState) {
-    return NextResponse.redirect(new URL("/?auth=error", request.url));
+    console.error("[auth/callback] State mismatch", { state, expectedState });
+    return NextResponse.redirect(new URL("/?auth=error&reason=state_mismatch", request.url));
   }
 
   const nextTarget = request.cookies.get(OAUTH_NEXT_COOKIE)?.value ?? "/repositories";
@@ -50,14 +52,19 @@ export async function GET(request: NextRequest) {
     nextTarget.startsWith("/") && !nextTarget.startsWith("//") ? nextTarget : "/repositories";
 
   try {
+    console.log("[auth/callback] Exchanging code for token");
     const token = await exchangeCodeForToken(code);
+    console.log("[auth/callback] Got token, fetching user");
     const githubUser = await getAuthenticatedUser(token.accessToken);
+    console.log("[auth/callback] Got GitHub user:", githubUser.login);
 
     const prisma = getPrisma();
     if (!prisma) {
+      console.error("[auth/callback] Database not configured");
       return NextResponse.redirect(new URL("/?auth=db_required", request.url));
     }
 
+    console.log("[auth/callback] Upserting user");
     const user = await prisma.user.upsert({
       where: { githubId: githubUser.id },
       create: {
@@ -103,6 +110,7 @@ export async function GET(request: NextRequest) {
         },
       },
     });
+    console.log("[auth/callback] User upserted:", user.id);
 
     // Record the GitHub App installations this user can access.
     try {
@@ -111,6 +119,7 @@ export async function GET(request: NextRequest) {
       // Non-fatal: installations are re-synced lazily on the repositories page.
     }
 
+    console.log("[auth/callback] Setting session cookie");
     const response = NextResponse.redirect(new URL(safeNext, request.url));
     response.cookies.set(SESSION_COOKIE, encodeSession(user.id), sessionCookieOptions());
     response.cookies.delete(OAUTH_STATE_COOKIE);
@@ -118,7 +127,7 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error("GitHub authorization callback failed:", message);
+    console.error("[auth/callback] Failed:", message);
     // Add more context to the redirect for debugging
     return NextResponse.redirect(new URL(`/?auth=error&reason=${encodeURIComponent(message.slice(0, 100))}`, request.url));
   }

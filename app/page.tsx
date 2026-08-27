@@ -27,7 +27,7 @@ export default async function Home({ searchParams }: HomeProps) {
         <Features />
         <ArchitectureExample />
         <AiQaSection />
-        <Pricing />
+        {/* <Pricing /> */}
         <Faq />
         <LandingCta />
       </main>
