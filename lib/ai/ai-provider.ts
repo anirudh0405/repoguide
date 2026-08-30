@@ -5,7 +5,7 @@
 
 import "server-only";
 
-import { NVIDIAProvider } from "@/lib/ai/nvidia-provider";
+import { GroqProvider } from "@/lib/ai/groq-provider";
 
 export type AIErrorCode =
   | "NOT_CONFIGURED"
@@ -43,7 +43,7 @@ export interface AIProvider {
 
 /** True when at least one provider has been configured. */
 export function isAIConfigured(): boolean {
-  return Boolean(process.env.NVIDIA_API_KEY);
+  return Boolean(process.env.GROQ_API_KEY);
 }
 
 /** Returns the configured provider. Throws AIError(NOT_CONFIGURED) otherwise. */
@@ -51,10 +51,10 @@ export function getAIProvider(): AIProvider {
   if (!isAIConfigured()) {
     throw new AIError(
       "NOT_CONFIGURED",
-      "AI documentation is not configured. Add NVIDIA_API_KEY to the server environment."
+      "AI generation is not configured. Add GROQ_API_KEY to the server environment."
     );
   }
-  return new NVIDIAProvider();
+  return new GroqProvider();
 }
 
 /** Publicly readable provider/model info (no secrets). */

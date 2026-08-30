@@ -87,7 +87,7 @@ export function parseAndValidate(raw: string): OnboardingGuideContent {
 }
 
 export function isAIGuideEnabled(): boolean {
-  return Boolean(process.env.NVIDIA_API_KEY);
+  return Boolean(process.env.GROQ_API_KEY);
 }
 
 export async function runOnboardingGuide(

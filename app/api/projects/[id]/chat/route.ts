@@ -5,6 +5,7 @@ import { ChatError, answerChatQuestion } from "@/lib/ai/chat";
 import { isEmbeddingConfigured } from "@/lib/ai/embedding-provider";
 import { getSessionUserId } from "@/lib/auth";
 import { getPrisma } from "@/lib/db";
+import { checkAiQuestionLimit, recordAiQuestion } from "@/lib/usage";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -148,6 +149,15 @@ export async function POST(request: NextRequest, context: RouteContext) {
     );
   }
 
+  // Check AI question limit before proceeding.
+  const limitCheck = await checkAiQuestionLimit(userId);
+  if (!limitCheck.allowed) {
+    return NextResponse.json(
+      { error: limitCheck.reason ?? "You've reached your monthly AI question limit." },
+      { status: 429 }
+    );
+  }
+
   // Resolve (or create) the session, always scoped to this user + project.
   let session;
   if (body.sessionId) {
@@ -218,6 +228,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
           where: { id: session.id },
           data: { updatedAt: new Date() },
         });
+
+        // Record AI question usage (estimate tokens from answer length).
+        const estimatedTokens = Math.ceil((question.length + result.answer.length) / 4);
+        await recordAiQuestion(userId, estimatedTokens);
 
         send("done", {
           messageId: assistant.id,

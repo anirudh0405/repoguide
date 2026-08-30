@@ -16,7 +16,7 @@ export interface PlanLimits {
 export const PLANS: Record<PlanName, PlanLimits> = {
   FREE: {
     maxRepositories: 1,
-    maxAiQuestionsPerMonth: 10,
+    maxAiQuestionsPerMonth: 20,
     maxTokensPerMonth: 50000,
     maxStorageBytes: 50 * 1024 * 1024, // 50 MB
     maxRepositorySizeBytes: 10 * 1024 * 1024, // 10 MB
