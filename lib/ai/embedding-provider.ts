@@ -1,17 +1,15 @@
 // Embedding provider for retrieval.
 //
-// NVIDIA NIM exposes an OpenAI-compatible /v1/embeddings endpoint. The default
-// model (nvidia/nv-embedqa-e5-v5) is a retrieval QA model with 1024-dimension
-// output and is dual-mode: use `input_type: "passage"` when indexing code and
-// `input_type: "query"` when embedding a user question (mismatching modes
-// measurably hurts retrieval accuracy).
+// Primary: Google Gemini (gemini-embedding-2) with 3072 dimensions
+// Fallback: NVIDIA NIM (nvidia/nv-embedqa-e5-v5) with 1024 dimensions for backward compatibility
 //
-// Everything is configurable so a different provider/model can be dropped in
-// by changing environment variables (see .env.example).
+// Gemini uses taskType (RETRIEVAL_DOCUMENT / RETRIEVAL_QUERY) instead of NVIDIA's input_type.
+// Everything is configurable via environment variables (see .env.example).
 
 import "server-only";
 
 import { AIError } from "@/lib/ai/ai-provider";
+import { getGeminiEmbeddingProvider, isGeminiEmbeddingConfigured, getGeminiEmbeddingDimensions } from "@/lib/ai/gemini-embedding-provider";
 
 const DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1";
 const DEFAULT_MODEL = "nvidia/nv-embedqa-e5-v5";
@@ -54,18 +52,29 @@ function configuredDimensions(): number {
 }
 
 export function isEmbeddingConfigured(): boolean {
-  return configuredKey().length > 0;
+  // Prefer Gemini if configured, otherwise check NVIDIA
+  return isGeminiEmbeddingConfigured() || configuredKey().length > 0;
 }
 
 export function getEmbeddingDimensions(): number {
+  // Use Gemini dimensions if configured, otherwise fall back to NVIDIA/default
+  if (isGeminiEmbeddingConfigured()) {
+    return getGeminiEmbeddingDimensions();
+  }
   return configuredDimensions();
 }
 
 export function getEmbeddingProvider(): EmbeddingProvider {
-  if (!isEmbeddingConfigured()) {
+  // Prefer Gemini (new provider)
+  if (isGeminiEmbeddingConfigured()) {
+    return getGeminiEmbeddingProvider();
+  }
+
+  // Fallback to NVIDIA (legacy)
+  if (!configuredKey()) {
     throw new AIError(
       "NOT_CONFIGURED",
-      "Embeddings are not configured. Add NVIDIA_API_KEY (or EMBEDDING_API_KEY) to the server environment."
+      "Embeddings are not configured. Add GEMINI_API_KEY or NVIDIA_API_KEY to the server environment."
     );
   }
   return new NIMEmbeddingProvider();
@@ -103,8 +112,6 @@ class NIMEmbeddingProvider implements EmbeddingProvider {
       input: texts,
       encoding_format: "float",
       input_type: inputType,
-      // Truncate (keep the start) rather than error if a chunk is somehow over
-      // the model's token limit — indexing must never die on one big chunk.
       truncate: "END",
     };
 

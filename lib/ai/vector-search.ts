@@ -22,7 +22,8 @@ export function getMaxChatTopK(): number {
 
 /**
  * Finds the chunks whose embedding is closest to `embedding`, restricted to
- * `projectId`. Uses cosine distance (`<=>`), ascending.
+ * `projectId`. Uses cosine distance (`<=>`) on halfvec for HNSW index usage.
+ * The HNSW index is created on ("vector"::halfvec(3072)) with halfvec_cosine_ops.
  */
 export async function searchChunks(
   projectId: string,
@@ -48,10 +49,10 @@ export async function searchChunks(
     }[]
   >(
     `SELECT "id", "filePath", "chunkIndex", "startLine", "endLine", "content",
-            ("vector" <=> $2::vector) AS distance
+            ("vector"::halfvec(3072) <=> $2::halfvec(3072)) AS distance
      FROM "FileChunk"
      WHERE "projectId" = $1 AND "vector" IS NOT NULL
-     ORDER BY "vector" <=> $2::vector
+     ORDER BY "vector"::halfvec(3072) <=> $2::halfvec(3072)
      LIMIT $3`,
     projectId,
     literal,

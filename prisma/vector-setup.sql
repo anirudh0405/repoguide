@@ -97,7 +97,16 @@ BEGIN
 END $$;
 
 -- pgvector column + HNSW cosine index (managed outside Prisma).
-ALTER TABLE "FileChunk" ADD COLUMN IF NOT EXISTS "vector" vector(1024);
+-- Updated for Gemini Embedding 2: 3072 dimensions (was 1024 for NVIDIA nv-embedqa-e5-v5).
+-- HNSW on vector(3072) is not supported (max 2000 dims).
+-- Use halfvec expression index instead, which supports up to 4000 dims.
+ALTER TABLE "FileChunk" ADD COLUMN IF NOT EXISTS "vector" vector(3072);
 
+-- Drop any existing legacy HNSW index on "vector" (vector_cosine_ops)
+-- This handles re-running the script after a failed migration.
+DROP INDEX IF EXISTS "FileChunk_vector_idx";
+
+-- Create HNSW index using halfvec expression (supports up to 4000 dims).
+-- The query in vector-search.ts casts both sides to halfvec(3072) so this index is used.
 CREATE INDEX IF NOT EXISTS "FileChunk_vector_idx"
-    ON "FileChunk" USING hnsw ("vector" vector_cosine_ops);
+    ON "FileChunk" USING hnsw (("vector"::halfvec(3072)) halfvec_cosine_ops);

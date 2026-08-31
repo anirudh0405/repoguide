@@ -71,12 +71,13 @@ Reusable pieces in `components/`:
 - `lib/ai/` — The AI system (server-side only, never reaches the browser):
   - `ai-provider.ts` — Provider abstraction (`AIProvider`) + factory. The rest of the app never calls Groq directly.
   - `groq-provider.ts` — Groq via official SDK (model: `openai/gpt-oss-20b`). Streams text completions token-by-token for chat answers.
-  - `nvidia-provider.ts` — NVIDIA NIM via its OpenAI-compatible API (used for embeddings only: `nvidia/nv-embedqa-e5-v5`, 1024 dimensions).
+  - `gemini-embedding-provider.ts` — Google Gemini via official SDK (model: `gemini-embedding-2`, 3072 dimensions). Uses taskType (RETRIEVAL_DOCUMENT / RETRIEVAL_QUERY) for passage/query distinction.
+  - `nvidia-provider.ts` — NVIDIA NIM via its OpenAI-compatible API (legacy fallback for embeddings: `nvidia/nv-embedqa-e5-v5`, 1024 dimensions).
   - `onboarding-schema.ts` — Zod schema for the guide + sanitizers (only real file paths survive, env vars are names only).
   - `context.ts` — Deterministic context selection: priorities README/manifests/entry points, skips sensitive files, redacts secrets, and caps files/tokens.
   - `onboarding-generator.ts` — Downloads the analyzed commit, builds context, calls the provider, validates (with one safe retry), sanitizes, and stores the guide.
   - `chunker.ts` — Splits code into small, line-numbered chunks at meaningful boundaries (functions, classes, blocks).
-  - `embedding-provider.ts` — Turns code chunks (and questions) into AI embeddings via NVIDIA NIM (`nvidia/nv-embedqa-e5-v5`, 1024 dimensions).
+  - `embedding-provider.ts` — Factory that selects Gemini (primary) or NVIDIA (fallback) embedding provider. Handles dimension configuration.
   - `vector-search.ts` — Finds the most relevant code chunks for a question using PostgreSQL vector search (cosine similarity), scoped to one project.
   - `indexer.ts` — The indexing pipeline: downloads the analyzed commit, skips generated/sensitive files, chunks the code, embeds it, and stores it with a status you can watch.
   - `chat.ts` — Answers a question: retrieves relevant chunks, builds a grounded prompt, streams the answer, and returns the real source files used as citations.
@@ -97,7 +98,7 @@ Reusable pieces in `components/`:
 
 ## Data
 
-Stored in a PostgreSQL database (Supabase). A project records the repository the user picked, the analysis results (files found, dependencies, languages, directory tree), the onboarding guide (only after it's generated — tied to the analyzed commit so it's reused until the code changes), and the Q&A index (code chunks with AI embeddings, tied to the analyzed commit). The repository's raw code is only ever downloaded into a temporary folder for analysis/indexing and then deleted — RepoGuide does **not** store repository code. All GitHub access is read-only. The GROQ_API_KEY (for generation) and NVIDIA_API_KEY (for embeddings) are stored only in the server environment, never in the database or the browser.
+Stored in a PostgreSQL database (Supabase). A project records the repository the user picked, the analysis results (files found, dependencies, languages, directory tree), the onboarding guide (only after it's generated — tied to the analyzed commit so it's reused until the code changes), and the Q&A index (code chunks with AI embeddings, tied to the analyzed commit). The repository's raw code is only ever downloaded into a temporary folder for analysis/indexing and then deleted — RepoGuide does **not** store repository code. All GitHub access is read-only. The GROQ_API_KEY (for generation), GEMINI_API_KEY (for embeddings), and NVIDIA_API_KEY (legacy embedding fallback) are stored only in the server environment, never in the database or the browser.
 
 ## How to Customize
 
@@ -106,10 +107,12 @@ Stored in a PostgreSQL database (Supabase). A project records the repository the
 - **Navigation**: sidebar links are in `components/app-shell/app-sidebar.tsx`.
 - **GitHub credentials**: in the `.env.local` file (kept out of git). See `.env.example` for the list.
 - **Groq API key**: Add `GROQ_API_KEY` to `.env.local` for AI generation (codebase Q&A, onboarding guides).
-- **NVIDIA API key**: Add `NVIDIA_API_KEY` to `.env.local` for embeddings (repository indexing).
+- **Gemini API key**: Add `GEMINI_API_KEY` to `.env.local` for embeddings (repository indexing, codebase Q&A).
+- **NVIDIA API key**: Add `NVIDIA_API_KEY` to `.env.local` for legacy embedding fallback (if needed for old indexes).
 
 ## Recent Changes
 
+- 2026-08-31: **Migrated embedding provider from NVIDIA to Google Gemini.** Replaced NVIDIA `nv-embedqa-e5-v5` (1024 dimensions) with Google `gemini-embedding-2` (3072 dimensions) for repository indexing and codebase Q&A. Added `GEMINI_API_KEY`, `GEMINI_EMBEDDING_MODEL`, and `EMBEDDING_DIMENSIONS=3072` environment variables. NVIDIA embedding provider retained as fallback for legacy indexes. Created database migration `prisma/migrate-embedding-dimensions.sql` to change `FileChunk.vector` from `vector(1024)` to `vector(3072)`. Existing repositories must be re-indexed to generate new Gemini embeddings. Groq generation (`openai/gpt-oss-20b`) remains unchanged. Verified: typecheck, lint, and production build all pass.
 - 2026-08-30: **Migrated LLM provider from NVIDIA to Groq.** Replaced NVIDIA Nemotron with Groq (model: `openai/gpt-oss-20b`) for codebase Q&A and onboarding guide generation. Added `GROQ_API_KEY` environment variable. NVIDIA is retained for embeddings only (`nvidia/nv-embedqa-e5-v5`). Updated Free plan to 20 AI questions/month (was 10). Added server-side usage limit check before calling Groq. Verified: typecheck, lint, and production build all pass.
 - 2026-08-21: **Codebase Q&A fully verified end-to-end.** Fixed the AI embedding model and the code splitter so every repository's code can be indexed, and fixed two database bugs that broke vector search. Indexing now uses NVIDIA `nv-embedqa-e5-v5` (1024 dimensions) and splits code into chunks small enough for the model's limits, with a safety cut-off so one oversized chunk can never abort indexing. Vector search now works against the stored embeddings (verified: a 12-question conversation about a real repository answered every question correctly, each with a citation list of the exact files used). Typecheck, lint, and production build all pass.
 - 2026-08-21: **Fixed a browser console warning on the home page.** The theme toggle (and the dashboard user menu) showed a "hydration mismatch" warning because the menu button's generated internal `id` differed between the server-rendered HTML and the browser. It's a known React/Radix UI quirk and harmless — the menus work fine. Suppressed the warning on both buttons; the console is now clean.
@@ -319,29 +322,22 @@ Documentation in `DEPLOYMENT.md`:
 - PostgreSQL + pgvector setup
 - GitHub OAuth configuration
 - Groq API configuration (GROQ_API_KEY)
-- NVIDIA API configuration (NVIDIA_API_KEY for embeddings)
+- **Gemini API configuration (GEMINI_API_KEY, GEMINI_EMBEDDING_MODEL)**
+- NVIDIA API configuration (NVIDIA_API_KEY for legacy embedding fallback)
 - Stripe billing setup
 - Production deployment (Vercel, Docker)
 - Security checklist
 - Monitoring recommendations
 
 ### Files Added/Modified
-- `lib/config/plans.ts` — Central plan configuration
-- `lib/usage.ts` — Usage tracking system
-- `lib/cache.ts` — In-memory caching
-- `lib/security.ts` — Rate limiting, input validation
-- `lib/billing/stripe.ts` — Stripe integration
-- `prisma/schema.prisma` — User plan, usage records, indexes
-- `app/api/onboarding/route.ts` — Onboarding checklist API
-- `app/api/projects/[id]/reanalyze/route.ts` — Re-analysis API
-- `app/api/billing/checkout/route.ts` — Stripe checkout
-- `app/api/billing/portal/route.ts` — Stripe portal
-- `app/api/billing/webhook/route.ts` — Stripe webhooks
-- `app/api/auth/delete-account/route.ts` — Account deletion
-- `app/settings/page.tsx` — Settings page
-- `components/onboarding/onboarding-checklist.tsx` — Checklist UI
-- `components/settings/settings-content.tsx` — Settings UI
-- `components/project/project-overview.tsx` — Re-analyze button
-- `components/app-shell/app-sidebar.tsx` — Settings nav link
-- `components/landing/pricing.tsx` — Updated pricing
-- `DEPLOYMENT.md` — Deployment documentation
+- `lib/ai/gemini-embedding-provider.ts` — New Google Gemini embedding provider (gemini-embedding-2, 3072 dimensions)
+- `lib/ai/groq-provider.ts` — Groq LLM provider (openai/gpt-oss-20b)
+- `lib/ai/embedding-provider.ts` — Updated to prefer Gemini, fallback to NVIDIA
+- `lib/ai/ai-provider.ts` — Updated to use Groq
+- `prisma/vector-setup.sql` — Updated vector dimension to 3072
+- `prisma/migrate-embedding-dimensions.sql` — Migration script for 1024→3072 dimension change
+- `.env.example` — Added GEMINI_API_KEY, GEMINI_EMBEDDING_MODEL, updated EMBEDDING_DIMENSIONS
+- `lib/config/plans.ts` — Free plan: 20 AI questions/month
+- `app/api/projects/[id]/chat/route.ts` — Added usage limit check
+- `lib/usage.ts` — Usage tracking for AI questions
+- `lib/ai/onboarding-generator.ts` — Updated to check GROQ_API_KEY

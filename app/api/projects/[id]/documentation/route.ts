@@ -120,7 +120,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   if (!isAIConfigured()) {
     return NextResponse.json(
-      { error: "AI documentation is not configured. Add NVIDIA_API_KEY to the server environment." },
+      { error: "AI documentation is not configured. Add GROQ_API_KEY to the server environment." },
       { status: 503 }
     );
   }

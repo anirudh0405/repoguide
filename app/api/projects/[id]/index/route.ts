@@ -81,7 +81,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   if (!isEmbeddingConfigured()) {
     return NextResponse.json(
-      { error: "Embeddings are not configured. Add NVIDIA_API_KEY to the server environment." },
+      { error: "Embeddings are not configured. Add GEMINI_API_KEY (or NVIDIA_API_KEY for legacy) to the server environment." },
       { status: 503 }
     );
   }

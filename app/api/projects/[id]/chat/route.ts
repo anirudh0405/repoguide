@@ -118,7 +118,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   if (!isAIConfigured() || !isEmbeddingConfigured()) {
     return NextResponse.json(
-      { error: "AI chat is not configured. Add NVIDIA_API_KEY to the server environment." },
+      { error: "AI chat is not configured. Add GEMINI_API_KEY (or NVIDIA_API_KEY for legacy) to the server environment." },
       { status: 503 }
     );
   }
