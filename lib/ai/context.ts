@@ -46,6 +46,7 @@ export interface PreparedContext {
   files: PreparedFile[];
   excludedSensitive: string[];
   totalCharacters: number;
+  estimatedPromptTokens: number;
 }
 
 // --- Configuration (all optional, with sensible defaults) -------------------
@@ -57,7 +58,7 @@ export function getMaxContextFiles(): number {
 
 export function getMaxContextTokens(): number {
   const parsed = Number.parseInt(process.env.AI_MAX_CONTEXT_TOKENS ?? "", 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 20_000;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 5_500;
 }
 
 export function getMaxFileSizeBytes(): number {
@@ -275,12 +276,37 @@ export interface BuildContextInput {
   readFile: (path: string) => Promise<string | null>;
 }
 
+/**
+ * Estimates token count from character count (rough approximation: 1 token ≈ 4 chars).
+ */
+function estimateTokens(chars: number): number {
+  return Math.ceil(chars / 4);
+}
+
+/**
+ * Estimates the token count of the system prompt + user prompt wrapper.
+ * This is the overhead before file content is added.
+ */
+function estimatePromptOverheadTokens(): number {
+  // System prompt (~1,200 chars) + user prompt wrapper (~500 chars) + JSON structure overhead
+  return 600;
+}
+
 export async function buildAIContext(input: BuildContextInput): Promise<PreparedContext> {
   const { repository, summary, files, dependencies, readFile } = input;
 
   const maxFiles = getMaxContextFiles();
   const maxFileBytes = getMaxFileSizeBytes();
-  const contentChars = Math.max(2000, estimateChars(getMaxContextTokens()) - 3000);
+  const maxContextTokens = getMaxContextTokens();
+
+  // Reserve tokens for: prompt overhead + response budget (max_tokens=4000 for structured)
+  // We need: prompt_tokens + max_tokens <= 8000 (TPM limit)
+  // So: prompt_tokens <= 8000 - 4000 = 4000
+  // But we stay conservative: keep prompt tokens <= 5500 (leaving 2500 for response)
+  const promptTokenBudget = Math.min(maxContextTokens, 5500);
+  const promptOverheadTokens = estimatePromptOverheadTokens();
+  const availableContentTokens = Math.max(0, promptTokenBudget - promptOverheadTokens);
+  const contentChars = availableContentTokens * 4; // ~4 chars per token
 
   const selected = selectContextFiles(files, summary, maxFiles * 2);
   const excludedSensitive = files
@@ -289,6 +315,7 @@ export async function buildAIContext(input: BuildContextInput): Promise<Prepared
 
   const prepared: PreparedFile[] = [];
   let usedChars = 0;
+  let estimatedPromptTokens = promptOverheadTokens;
 
   for (const file of selected) {
     if (prepared.length >= maxFiles) break;
@@ -317,11 +344,12 @@ export async function buildAIContext(input: BuildContextInput): Promise<Prepared
       excerpt,
     });
     usedChars += excerpt.length;
+    estimatedPromptTokens = promptOverheadTokens + estimateTokens(usedChars);
   }
 
   const topDependencies = dependencies
     .sort((a, b) => (b.version ? 1 : 0) - (a.version ? 1 : 0))
-    .slice(0, 40)
+    .slice(0, 30) // Reduced from 40 to save tokens
     .map((dep) => `${dep.type}:${dep.name}`);
 
   return {
@@ -340,5 +368,6 @@ export async function buildAIContext(input: BuildContextInput): Promise<Prepared
     files: prepared,
     excludedSensitive,
     totalCharacters: usedChars,
+    estimatedPromptTokens,
   };
 }

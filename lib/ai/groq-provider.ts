@@ -24,6 +24,18 @@ function apiKey(): string {
   return key;
 }
 
+function isRateLimitOrPayloadError(error: unknown): boolean {
+  if (error instanceof Groq.APIError) {
+    return error.status === 413 || error.status === 429;
+  }
+  // Fallback for non-Groq error types
+  if (error instanceof Error) {
+    const msg = error.message.toLowerCase();
+    return msg.includes("413") || msg.includes("payload too large") || msg.includes("rate limit") || msg.includes("429");
+  }
+  return false;
+}
+
 export class GroqProvider implements AIProvider {
   readonly name = "groq";
   readonly model = configuredModel();
@@ -38,22 +50,32 @@ export class GroqProvider implements AIProvider {
   }
 
   async generateStructured(systemPrompt: string, userPrompt: string): Promise<string> {
-    const completion = await this.client.chat.completions.create({
-      model: this.model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.2,
-      max_tokens: 4000,
-      response_format: { type: "json_object" },
-    });
+    try {
+      const completion = await this.client.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.2,
+        max_tokens: 4000,
+        response_format: { type: "json_object" },
+      });
 
-    const content = completion.choices[0]?.message?.content;
-    if (typeof content !== "string" || content.trim().length === 0) {
-      throw new AIError("MODEL_ERROR", "The AI provider returned an empty response.");
+      const content = completion.choices[0]?.message?.content;
+      if (typeof content !== "string" || content.trim().length === 0) {
+        throw new AIError("MODEL_ERROR", "The AI provider returned an empty response.");
+      }
+      return content;
+    } catch (error) {
+      if (isRateLimitOrPayloadError(error)) {
+        throw new AIError(
+          "RATE_LIMITED",
+          "The AI provider request was too large or rate limited. Try again with a smaller repository or wait a moment."
+        );
+      }
+      throw error;
     }
-    return content;
   }
 
   async generateText(
@@ -61,29 +83,39 @@ export class GroqProvider implements AIProvider {
     userPrompt: string,
     onToken: (delta: string) => void
   ): Promise<string> {
-    const stream = await this.client.chat.completions.create({
-      model: this.model,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      temperature: 0.2,
-      max_tokens: 2500,
-      stream: true,
-    });
+    try {
+      const stream = await this.client.chat.completions.create({
+        model: this.model,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.2,
+        max_tokens: 2500,
+        stream: true,
+      });
 
-    let full = "";
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content;
-      if (typeof delta === "string" && delta.length > 0) {
-        full += delta;
-        onToken(delta);
+      let full = "";
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content;
+        if (typeof delta === "string" && delta.length > 0) {
+          full += delta;
+          onToken(delta);
+        }
       }
-    }
 
-    if (full.trim().length === 0) {
-      throw new AIError("MODEL_ERROR", "The AI provider returned an empty response.");
+      if (full.trim().length === 0) {
+        throw new AIError("MODEL_ERROR", "The AI provider returned an empty response.");
+      }
+      return full;
+    } catch (error) {
+      if (isRateLimitOrPayloadError(error)) {
+        throw new AIError(
+          "RATE_LIMITED",
+          "The AI provider request was too large or rate limited. Try again with a smaller repository or wait a moment."
+        );
+      }
+      throw error;
     }
-    return full;
   }
 }
