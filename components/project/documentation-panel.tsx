@@ -113,7 +113,7 @@ export function DocumentationPanel({ projectId }: { projectId: string }) {
                       ? "Generating the guide — you can watch progress on the guide page."
                       : guide?.status === "FAILED"
                         ? "The last generation attempt failed."
-                        : "A guided walkthrough of this codebase, written with NVIDIA Nemotron."}
+                        : "A guided walkthrough of this codebase, written with AI."}
               </p>
               {state.outdated && (
                 <p className="mt-1 text-xs font-medium text-warning">

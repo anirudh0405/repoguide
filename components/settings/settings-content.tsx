@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { GitBranch, Database, CreditCard, Trash2, AlertCircle, ExternalLink, RefreshCw } from "lucide-react";
+import { GitBranch, Database, CreditCard, Trash2, AlertCircle, ExternalLink, RefreshCw, LogOut } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,25 @@ export function SettingsContent({ user }: SettingsContentProps) {
       }
     } catch {
       alert("Failed to delete account. Please try again.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleDisconnectGitHub = async () => {
+    if (!confirm("Are you sure you want to disconnect your GitHub account? This will revoke RepoGuide's access to your repositories and remove your saved analysis data and chat history.")) return;
+    setDeleting(true);
+    try {
+      const res = await fetch("/api/auth/disconnect", {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        window.location.href = "/?disconnected=1";
+      } else {
+        alert("Failed to disconnect GitHub account. Please try again.");
+      }
+    } catch {
+      alert("Failed to disconnect GitHub account. Please try again.");
     } finally {
       setDeleting(false);
     }
@@ -112,6 +131,17 @@ export function SettingsContent({ user }: SettingsContentProps) {
                   </Link>
                 </Button>
               </div>
+              {((user as { account?: { accessToken?: string } }).account?.accessToken ?? user.login) && (
+                <Button
+                  asChild
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleDisconnectGitHub}
+                >
+                  <LogOut className="mr-1 h-4 w-4" />
+                  Disconnect GitHub
+                </Button>
+              )}
             </CardContent>
           </Card>
 

@@ -7,7 +7,7 @@ import { AIError, type AIProvider } from "@/lib/ai/ai-provider";
 
 const DEFAULT_BASE_URL = "https://integrate.api.nvidia.com/v1";
 const DEFAULT_MODEL = "nvidia/nemotron-3.5-lightning-30b-a3b";
-const REQUEST_TIMEOUT_MS = 180_000; // Nemotron reasoning can be slow.
+const REQUEST_TIMEOUT_MS = 180_000; // Legacy NVIDIA provider timeout (replaced by Groq).
 
 function configuredBaseUrl(): string {
   return (process.env.NVIDIA_BASE_URL ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
