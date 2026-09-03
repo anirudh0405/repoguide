@@ -100,7 +100,7 @@ export function AppSidebar({ user }: { user: CurrentUser }) {
 
         <div className="border-t p-3">
           <p className="px-1 text-[11px] leading-relaxed text-muted-foreground">
-            GitHub is connected. AI onboarding guides are powered by NVIDIA Nemotron.
+            GitHub is connected. AI onboarding guides are powered by Groq.
           </p>
         </div>
       </aside>

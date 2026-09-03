@@ -191,7 +191,13 @@ export async function runOnboardingGuide(
     const userPrompt = buildUserPrompt(context);
 
     await setStep("analyzing");
-    let raw = await provider.generateStructured(systemPrompt, userPrompt);
+    let raw: string;
+    try {
+      raw = await provider.generateStructured(systemPrompt, userPrompt);
+    } catch (error) {
+      await markFailed(error);
+      throw error;
+    }
 
     // Validate. One safe retry — the prompt is unchanged except for feedback on
     // what was invalid; repository content is never added to the instructions.
@@ -200,8 +206,13 @@ export async function runOnboardingGuide(
       content = parseAndValidate(raw);
     } catch {
       const feedback = `Your previous response was invalid: it was not a single JSON object matching the required schema. Respond again with ONLY the valid JSON object.${SCHEMA_HINT}`;
-      raw = await provider.generateStructured(systemPrompt, `${userPrompt}\n\n${feedback}`);
-      content = parseAndValidate(raw);
+      try {
+        raw = await provider.generateStructured(systemPrompt, `${userPrompt}\n\n${feedback}`);
+        content = parseAndValidate(raw);
+      } catch (error) {
+        await markFailed(error);
+        throw error;
+      }
     }
 
     await setStep("building");

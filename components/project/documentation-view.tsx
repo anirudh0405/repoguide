@@ -48,7 +48,7 @@ const STAGES: { step: string | null; label: string; terminal: GuideStatus | null
   { step: "analysis-loaded", label: "Repository analysis loaded", terminal: null },
   { step: "files-selected", label: "Important files selected", terminal: null },
   { step: "context-prepared", label: "Codebase context prepared", terminal: null },
-  { step: "analyzing", label: "Nemotron analyzing codebase", terminal: null },
+  { step: "analyzing", label: "Groq analyzing codebase", terminal: null },
   { step: "building", label: "Building onboarding guide", terminal: "COMPLETED" },
 ];
 
@@ -237,7 +237,7 @@ export function DocumentationView({
             No onboarding guide yet
           </h2>
           <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-            RepoGuide reads this repository with NVIDIA Nemotron and writes a structured guide —
+            RepoGuide reads this repository with AI and writes a structured guide —
             what it does, its stack, architecture, important files, application flows, and how to
             get started.
           </p>
