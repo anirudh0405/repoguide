@@ -14,9 +14,12 @@ RepoGuide is a developer SaaS that helps engineers understand unfamiliar codebas
 4. They land in the app — their real GitHub repositories are listed and searchable.
 5. Clicking **Analyze** on a repository downloads it, analyzes it, and shows a live progress view followed by a project overview. From there, **Generate** produces the AI onboarding guide. The repository is automatically indexed for Q&A once analysis finishes.
 
+- **Privacy Policy** (`/privacy-policy`) — Legal policy page detailing data collection, usage, user rights, and disclaimers.
+
 ## Pages
 
 - **Home** (`/`) — Landing page with hero, how-it-works, features, an example architecture diagram, codebase Q&A preview, pricing, FAQ, and call-to-action. Sign-in buttons are real.
+- **Privacy Policy** (`/privacy-policy`) — Legal policy page detailing data collection, usage, user rights, and disclaimers.
 - **Dashboard** (`/dashboard`) — Real projects you've created, with status badges (Analyzed / In progress / Repositories).
 - **Repositories** (`/repositories`) — Your real GitHub repositories (from the app installation). Search, filter by language, or install the app for more.
 - **Project detail** (`/projects/[id]`) — Live analysis progress while a repo is being analyzed, a project overview when done (languages, frameworks, package manager, entry points, important files, dependencies, directory tree), and a panel to generate the AI onboarding guide.
