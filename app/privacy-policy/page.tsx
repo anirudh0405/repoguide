@@ -204,8 +204,8 @@ export default function PrivacyPolicyPage() {
             </h2>
             <p>
               If you have questions about this Privacy Policy, or if you would like to exercise any of your rights described herein, you can contact us at:<br />
-              <a href="mailto:privacy@repguide.example" className="transition-colors hover:text-foreground">
-                privacy@repguide.example
+              <a href="mailto:privacy@repoguide.example" className="transition-colors hover:text-foreground">
+                privacy@repoguide.example
               </a><br /><br />
             </p>
             <p>

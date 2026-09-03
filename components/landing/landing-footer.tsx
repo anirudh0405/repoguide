@@ -14,6 +14,7 @@ const resourcesLinks = [
   { label: "How it works", href: "/#how-it-works" },
   { label: "Features", href: "/#features" },
   { label: "FAQ", href: "/#faq" },
+  { label: "Privacy Policy", href: "/privacy-policy" },
 ];
 
 export function LandingFooter() {
