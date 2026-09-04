@@ -32,13 +32,17 @@ export function AuthCta({
             variant="outline"
             onClick={() => window.location.href = "/api/auth/disconnect"}
           >
-            <LogOut className="mr-2 h-4 w-4" />
-            Disconnect GitHub
+            <span className="flex items-center gap-2">
+              <LogOut className="mr-2 h-4 w-4" />
+              Disconnect GitHub
+            </span>
           </Button>
           <Link href="/dashboard">
             <Button asChild size={size} variant="outline">
-              Dashboard
-              <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              <span className="flex items-center gap-1">
+                Dashboard
+                <ArrowRight className="ml-1 h-3.5 w-3.5" />
+              </span>
             </Button>
           </Link>
         </>
@@ -92,8 +96,10 @@ export function AuthNav({ className }: { className?: string }) {
             size="sm"
             onClick={() => window.location.href = "/api/auth/disconnect"}
           >
-            <LogOut className="h-4 w-4" />
-            Disconnect
+            <span className="flex items-center gap-2">
+              <LogOut className="h-4 w-4" />
+              Disconnect
+            </span>
           </Button>
         </>
       ) : (

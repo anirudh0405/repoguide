@@ -138,8 +138,10 @@ export function SettingsContent({ user }: SettingsContentProps) {
                   size="sm"
                   onClick={handleDisconnectGitHub}
                 >
-                  <LogOut className="mr-1 h-4 w-4" />
-                  Disconnect GitHub
+                  <span className="flex items-center gap-1">
+                    <LogOut className="mr-1 h-4 w-4" />
+                    Disconnect GitHub
+                  </span>
                 </Button>
               )}
             </CardContent>
