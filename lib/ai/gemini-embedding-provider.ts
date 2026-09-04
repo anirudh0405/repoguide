@@ -12,6 +12,7 @@ import { AIError } from "@/lib/ai/ai-provider";
 const DEFAULT_MODEL = "gemini-embedding-2";
 const DEFAULT_DIMENSIONS = 3072;
 const BATCH_SIZE = 100; // Gemini supports batch embeddings
+const MAX_INPUT_TOKENS = 32000; // Safe truncation limit for Gemini Developer API
 
 export type EmbeddingInputType = "passage" | "query";
 
@@ -45,6 +46,16 @@ function configuredKey(): string {
 function configuredDimensions(): number {
   const parsed = Number.parseInt(envValue("EMBEDDING_DIMENSIONS") ?? "", 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : DEFAULT_DIMENSIONS;
+}
+
+function truncateForGeminiDeveloperAPI(text: string): string {
+  // Gemini Developer API has input token limits; truncate safely to avoid errors.
+  // gemini-embedding-2 supports large inputs, but we cap at 32K tokens to be safe
+  // and avoid any model-specific limits or the unsupported autoTruncate parameter.
+  const approxCharsPerToken = 3.5;
+  const maxChars = Math.floor(MAX_INPUT_TOKENS * approxCharsPerToken);
+  if (text.length <= maxChars) return text;
+  return text.substring(0, maxChars - 100) + "...";
 }
 
 function mapInputType(inputType: EmbeddingInputType): string {
@@ -109,11 +120,10 @@ class GeminiEmbeddingProvider implements EmbeddingProvider {
     try {
       const response = await this.client.models.embedContent({
         model: this.model,
-        contents: texts,
+        contents: texts.map((t) => truncateForGeminiDeveloperAPI(t)),
         config: {
           taskType,
           outputDimensionality: this.dimensions,
-          autoTruncate: true,
         },
       });
 
