@@ -3,7 +3,7 @@
 // actual repository content.
 //
 // Runs fully server-side. Files that are binary, generated, dependency
-// lockfiles, or sensitive (.env, keys, …) are never embedded. The exact
+// lockfiles, or sensitive (.env, keys, ...) are never embedded. The exact
 // analyzed commit is downloaded, chunked, embedded, and discarded — the index
 // stores only the resulting chunks, never the raw repository.
 
@@ -47,7 +47,6 @@ const LOCKFILE_NAMES = new Set([
   "pnpm-lock.yaml",
   "pnpm-lock.yml",
   "poetry.lock",
-  "Pipfile.lock",
   "Cargo.lock",
   "Gemfile.lock",
   "composer.lock",
@@ -103,23 +102,38 @@ export async function runIndexing(projectId: string): Promise<void> {
     return;
   }
 
-  const index = await prisma.codeIndex.upsert({
-    where: { projectId },
-    update: { status: "INDEXING", step: "download", error: null },
-    create: { projectId, status: "INDEXING", step: "download" },
-  });
-
-  const setStep = (step: IndexStep): Promise<unknown> =>
-    prisma.codeIndex.update({ where: { id: index.id }, data: { step } });
-
-  const markFailed = (error: unknown): Promise<unknown> =>
-    prisma.codeIndex.update({
-      where: { id: index.id },
-      data: { status: "FAILED", step: null, error: errorMessage(error) },
-    });
-
+  let indexId: string | null = null;
   let tempDir: string | null = null;
+
+  const setStep = async (step: IndexStep): Promise<void> => {
+    if (indexId === null) return;
+    try {
+      await prisma.codeIndex.update({ where: { id: indexId }, data: { step } });
+    } catch (err) {
+      console.error(`[indexer] failed to set step "${step}" for project`, projectId, ":", err);
+    }
+  };
+
+  const markFailed = async (error: unknown): Promise<void> => {
+    if (indexId === null) return;
+    try {
+      await prisma.codeIndex.update({
+        where: { id: indexId },
+        data: { status: "FAILED", step: null, error: errorMessage(error) },
+      });
+    } catch (err) {
+      console.error(`[indexer] failed to mark codeIndex as FAILED for project`, projectId, ":", err);
+    }
+  };
+
   try {
+    const indexUpsert = await prisma.codeIndex.upsert({
+      where: { projectId },
+      update: { status: "INDEXING", step: "download", error: null },
+      create: { projectId, status: "INDEXING", step: "download" },
+    });
+    indexId = indexUpsert.id;
+
     const account = await prisma.gitHubAccount.findUnique({ where: { userId: project.userId } });
     if (!account || !account.accessToken) {
       throw new AIError(
@@ -169,7 +183,7 @@ export async function runIndexing(projectId: string): Promise<void> {
 
     if (chunks.length === 0) {
       await prisma.codeIndex.update({
-        where: { id: index.id },
+        where: { id: indexId },
         data: {
           status: "EMPTY",
           step: null,
@@ -224,7 +238,7 @@ export async function runIndexing(projectId: string): Promise<void> {
     }
 
     await prisma.codeIndex.update({
-      where: { id: index.id },
+      where: { id: indexId },
       data: {
         status: "COMPLETED",
         step: null,
