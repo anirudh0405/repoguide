@@ -241,7 +241,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
         });
       } catch (error) {
         console.error("[chat] failed:", error);
-        send("error", { error: errorMessage(error) });
+        const msg = error instanceof Error ? error.message : "Could not answer that question.";
+        send("error", { error: msg });
       } finally {
         try {
           controller.close();
