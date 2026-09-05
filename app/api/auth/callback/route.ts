@@ -5,7 +5,7 @@ import {
   OAUTH_STATE_COOKIE,
   SESSION_COOKIE,
   encodeSession,
-  sessionCookieOptions,
+  githubCookieOptions,
 } from "@/lib/auth";
 import { getPrisma } from "@/lib/db";
 import {
@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
 
     console.log("[auth/callback] Setting session cookie");
     const response = NextResponse.redirect(new URL(safeNext, request.url));
-    response.cookies.set(SESSION_COOKIE, encodeSession(user.id), sessionCookieOptions());
+    response.cookies.set(SESSION_COOKIE, encodeSession(user.id), githubCookieOptions());
     response.cookies.delete(OAUTH_STATE_COOKIE);
     response.cookies.delete(OAUTH_NEXT_COOKIE);
     return response;

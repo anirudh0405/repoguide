@@ -70,22 +70,6 @@ export async function getSessionUserId(): Promise<string | null> {
   return payload?.userId ?? null;
 }
 
-export function sessionCookieOptions(): {
-  httpOnly: true;
-  sameSite: "lax";
-  secure: boolean;
-  path: "/";
-  maxAge: number;
-} {
-  return {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: SESSION_MAX_AGE,
-  };
-}
-
 export function stateCookieOptions(): {
   httpOnly: true;
   sameSite: "lax";
@@ -99,6 +83,22 @@ export function stateCookieOptions(): {
     secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: STATE_MAX_AGE,
+  };
+}
+
+export function githubCookieOptions(): {
+  httpOnly: true;
+  sameSite: "lax";
+  secure: boolean;
+  path: "/";
+  maxAge: number;
+} {
+  return {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: SESSION_MAX_AGE,
   };
 }
 
